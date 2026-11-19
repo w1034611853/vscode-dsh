@@ -460,7 +460,7 @@ export function normalizeAlpha171SessionHeader(
   const segments = relative.split(/[\\/]+/u).filter((segment) => segment !== '')
   if (segments.some((segment) => segment === '.' || segment === '..' || segment.includes('\0')))
     return value
-  return { ...value, cwd: segments.length === 0 ? '/' : \`/\${segments.join('/')}\` }
+  return { ...value, cwd: segments.length === 0 ? '/' : '/' + segments.join('/') }
 }
 
 function validAlpha171SessionHeader(value: unknown, profile?: AlphaV4SessionProfile): boolean {
