@@ -45,7 +45,7 @@ export async function workspaceBrowser(
       : backend.sessions.list({ workspaceId }, signal, { workspaceSnapshot: directory.registry })
   const local = hasLocalWorkspaceAuthority(backend.connection)
   if (request.action === 'list') {
-    deps.diagnostics.log('info', 'workspace-browser-authority', {
+    deps.diagnostics?.log('info', 'workspace-browser-authority', {
       localAuthority: local,
       loopbackEndpoint: isLoopbackEndpoint(backend.connection.endpoint),
       ownership: backend.connection.ownership,
