@@ -106,10 +106,12 @@ export function readAlpha171HistoryRecord(
 export function readAlpha171SessionSnapshot(
   value: unknown,
   profile?: AlphaV4SessionProfile,
+  distroName = process.env.WSL_DISTRO_NAME,
 ): Alpha171SessionSnapshot | undefined {
   const record = plainRecord(value)
   const wireHeader = plainRecord(record?.header)
-  const header = wireHeader === undefined ? undefined : normalizeAlpha171SessionHeader(wireHeader)
+  const header =
+    wireHeader === undefined ? undefined : normalizeAlpha171SessionHeader(wireHeader, distroName)
   if (
     record?.type !== 'snapshot' ||
     header === undefined ||
@@ -463,9 +465,15 @@ export function normalizeAlpha171SessionHeader(
   return { ...value, cwd: segments.length === 0 ? '/' : '/' + segments.join('/') }
 }
 
-function validAlpha171SessionHeader(value: unknown, profile?: AlphaV4SessionProfile): boolean {
+function validAlpha171SessionHeader(
+  value: unknown,
+  profile?: AlphaV4SessionProfile,
+  distroName = process.env.WSL_DISTRO_NAME,
+): boolean {
   try {
-    ;(profile?.validateHeader ?? assertReleasedV4Header)(headerForArtifactValidation(value))
+    const header = plainRecord(value)
+    const normalized = header === undefined ? value : normalizeAlpha171SessionHeader(header, distroName)
+    ;(profile?.validateHeader ?? assertReleasedV4Header)(headerForArtifactValidation(normalized))
     return true
   } catch {
     return false
