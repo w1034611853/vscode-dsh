@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { stat } from 'node:fs/promises'
-import { AppError } from '@dsh-vscode/domain'
+import { AppError, isLoopbackEndpoint } from '@dsh-vscode/domain'
 import { isInjectedUserMessage } from '@dsh-vscode/timeline'
 import type { WebviewRequest } from '@dsh-vscode/webview-protocol'
 import type { RequestGatewayDependencies } from './request-gateway-dependencies.js'
@@ -44,6 +44,18 @@ export async function workspaceBrowser(
       ? backend.sessions.list({ workspaceId }, signal)
       : backend.sessions.list({ workspaceId }, signal, { workspaceSnapshot: directory.registry })
   const local = hasLocalWorkspaceAuthority(backend.connection)
+  if (request.action === 'list') {
+    deps.diagnostics.log('info', 'workspace-browser-authority', {
+      localAuthority: local,
+      loopbackEndpoint: isLoopbackEndpoint(backend.connection.endpoint),
+      ownership: backend.connection.ownership,
+      desktopPairing: backend.connection.localDesktopPairing === true,
+      pidPresent: backend.connection.pid !== undefined,
+      workspacePathCount: workspaces.filter((item) => item.path !== undefined).length,
+      currentFolderCount: deps.currentWorkspaceFolders().length,
+      isWsl: process.platform === 'linux' && vscode.env.remoteName === 'wsl',
+    })
+  }
   if (request.action === 'resume') {
     const pending = deps.context.globalState.get<{ path: string; sessionId: string; time: number }>(
       WORKSPACE_HANDOFF,
