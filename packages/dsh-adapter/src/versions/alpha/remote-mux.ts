@@ -557,6 +557,7 @@ export function malformedResponse(method: string, cause?: unknown): AppError {
     code: 'PROTOCOL_ERROR',
     message: `DSH returned a malformed alpha response for ${method}.`,
     retryable: false,
+    context: { rpcMethod: method },
     ...(cause === undefined ? {} : { cause }),
   })
 }
