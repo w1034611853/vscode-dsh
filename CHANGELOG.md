@@ -18,6 +18,7 @@
 
 ## 未发布
 
+- Remote-WSL Desktop 配对现在同时支持 IPv4 `127.0.0.1` 与 IPv6 `[::1]` loopback 地址；修复 DSH Connect 返回 IPv6 loopback 时无法建立本地工作区权限证明、导致跨工作区继续按钮被禁用的问题。
 - 新增 Remote-WSL 连接 Windows DSH Desktop 的 HTTP 配对路径：使用已授权的 Desktop Connect loopback API 获取新 launch URL，不再依赖 WSL 中不可用的 Windows Named Pipe；配对后可获得本地工作区操作权限。
 - 识别当前 WSL 发行版对应的 `\\wsl.localhost\\<distro>\\...` / `\\wsl$\\<distro>\\...` 工作区路径，并在文件系统访问、工作区比较和跨项目打开时映射为 POSIX 路径；拒绝其他发行版和路径遍历段。
 - 为 WSL HTTP 配对、launch URL 校验和 UNC 路径映射补充单元测试。
