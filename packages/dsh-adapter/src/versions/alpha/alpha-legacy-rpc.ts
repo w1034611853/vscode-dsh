@@ -19,7 +19,12 @@ import {
   type AlphaCatalogSelection,
   presetRoster,
 } from './model-catalog.js'
-import { expandHistoryRecords, readAlphaWireSnapshot, validAlphaProjectionBaseline } from './session-wire.js'
+import {
+  alphaWireSnapshotFailure,
+  expandHistoryRecords,
+  readAlphaWireSnapshot,
+  validAlphaProjectionBaseline,
+} from './session-wire.js'
 import {
   type AlphaConfigurableProvider,
   type AlphaResponse,
@@ -263,16 +268,34 @@ export function createAlphaLegacyRpc(dependencies: AlphaLegacyRpcDependencies): 
     request: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<Record<string, unknown>> {
+    const wireVersion = options.sessionWireVersion ?? 'v0'
     for await (const item of openRemoteStream('session/follow', { request }, signal)) {
-      const frame = readAlphaWireSnapshot(
-        item,
-        options.sessionWireVersion ?? 'v0',
-        options.sessionWireProfile,
-      )
-      if (frame === undefined) throw malformedResponse('session/follow snapshot')
+      const frame = readAlphaWireSnapshot(item, wireVersion, options.sessionWireProfile)
+      if (frame === undefined) {
+        const reason = alphaWireSnapshotFailure(item, wireVersion, options.sessionWireProfile)
+        throw new AppError({
+          code: 'PROTOCOL_ERROR',
+          message: 'DSH returned an invalid session/follow snapshot.',
+          retryable: false,
+          context: {
+            rpcMethod: 'session/follow snapshot',
+            rpcCode: reason ?? 'snapshot-invalid',
+            wireVersion,
+          },
+        })
+      }
       return frame
     }
-    throw malformedResponse('session/follow snapshot')
+    throw new AppError({
+      code: 'PROTOCOL_ERROR',
+      message: 'DSH ended session/follow before sending its opening snapshot.',
+      retryable: false,
+      context: {
+        rpcMethod: 'session/follow snapshot',
+        rpcCode: 'snapshot-stream-empty',
+        wireVersion,
+      },
+    })
   }
 
   function historyResponse(value: unknown, sessionId: string): LegacyResponse {
