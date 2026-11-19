@@ -88,6 +88,47 @@ it('names another instance as the writer holding session.prompt', async () => {
   expect(JSON.stringify(sent[0])).not.toContain('Private session and owner details')
 })
 
+it('logs only the RPC method and error codes when a prompt response is malformed', async () => {
+  const posted: unknown[] = []
+  const logged: Readonly<Record<string, string | number>>[] = []
+  const router = new WebviewMessageRouter({
+    postMessage: (message) => {
+      posted.push(message)
+      return Promise.resolve(true)
+    },
+    logSessionRequest: (fields) => logged.push(fields),
+    handleRequest: () =>
+      Promise.reject(
+        new AppError({
+          code: 'PROTOCOL_ERROR',
+          message: 'Private response body must not reach diagnostics',
+          retryable: false,
+          context: { rpcMethod: 'session/prompt', rpcCode: 'invalid-envelope' },
+        }),
+      ),
+  })
+  await router.handle({
+    protocolVersion: 1,
+    message: {
+      type: 'session.sendPrompt',
+      requestId: 'malformed-prompt',
+      payload: { sessionId: 'fixture-session', text: 'private prompt text', attachments: [], mode: 'queue' },
+    },
+  })
+  expect(posted[0]).toMatchObject({ ok: false, error: { code: 'PROTOCOL_ERROR' } })
+  expect(logged).toHaveLength(2)
+  expect(logged[1]).toMatchObject({
+    requestType: 'session.sendPrompt',
+    phase: 'failed',
+    code: 'PROTOCOL_ERROR',
+    method: 'session/prompt',
+    rpcMethod: 'session/prompt',
+    rpcCode: 'invalid-envelope',
+  })
+  expect(JSON.stringify(logged)).not.toContain('private prompt text')
+  expect(JSON.stringify(logged)).not.toContain('Private response body')
+})
+
 describe('WebviewMessageRouter custom provider validation', () => {
   it.each([
     ['unsupported input type', { input: ['audio'] }],
