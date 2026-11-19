@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   alpha171SessionSnapshotFailure,
+  normalizeAlpha171SessionHeader,
+  readAlpha171SessionSnapshot,
   validAlpha171SessionEvent,
   validAlpha171SessionSnapshot,
   normalizeAlpha171Event,
@@ -69,6 +71,26 @@ describe('native alpha171 Session V4 snapshot diagnostics', () => {
       'snapshot-projections-invalid',
     )
     expect(alpha171SessionSnapshotFailure(snapshot())).toBeUndefined()
+  })
+})
+
+describe('Remote-WSL session header normalization', () => {
+  it('maps the current distro UNC cwd to POSIX before V4 validation and in the returned snapshot', () => {
+    const unc = '\\\\\\\\wsl.localhost\\\\HwUbuntu-24.04\\\\home\\\\w00640205\\\\codehub\\\\ai\\\\WirelessArchESL'
+    const sourceHeader = { ...header, cwd: unc }
+    expect(normalizeAlpha171SessionHeader(sourceHeader, 'HwUbuntu-24.04').cwd).toBe(
+      '/home/w00640205/codehub/ai/WirelessArchESL',
+    )
+    expect(normalizeAlpha171SessionHeader(sourceHeader, 'Ubuntu').cwd).toBe(unc)
+    const parsed = readAlpha171SessionSnapshot({ ...snapshot(), header: sourceHeader }, undefined, 'HwUbuntu-24.04')
+    expect(parsed?.header.cwd).toBe('/home/w00640205/codehub/ai/WirelessArchESL')
+  })
+
+  it('does not normalize another distro or traversal paths', () => {
+    const other = String.raw`\\wsl.localhost\\Ubuntu\\home\\project`
+    const traversal = String.raw`\\wsl.localhost\\HwUbuntu-24.04\\home\\..\\etc`
+    expect(normalizeAlpha171SessionHeader({ ...header, cwd: other }, 'HwUbuntu-24.04').cwd).toBe(other)
+    expect(normalizeAlpha171SessionHeader({ ...header, cwd: traversal }, 'HwUbuntu-24.04').cwd).toBe(traversal)
   })
 })
 
