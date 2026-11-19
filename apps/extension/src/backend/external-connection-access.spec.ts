@@ -120,6 +120,20 @@ describe('external connection credentials', () => {
     )
   })
 
+  it('reads an authenticated IPv6 loopback Desktop launch URL', async (): Promise<void> => {
+    const f = fixture()
+    const target = endpoint('http://[::1]:3080')
+    await f.access.authorize(target, undefined, 'initial-desktop-token')
+    await f.access.prepare(target, new AbortController().signal)
+    const launchUrl = 'http://[::1]:3180/?token=rotated-desktop-token'
+    f.fetch.mockResolvedValueOnce(Response.json({ url: launchUrl }))
+
+    await expect(f.access.readDesktopLaunchUrl(target)).resolves.toBe(launchUrl)
+    await expect(
+      f.access.authorizePairedDesktop(endpoint('http://[::1]:3180'), 'rotated-desktop-token'),
+    ).resolves.toBeUndefined()
+  })
+
   it('rejects non-loopback Desktop launch URLs and URLs that omit the token', async (): Promise<void> => {
     const f = fixture()
     const target = endpoint('http://127.0.0.1:3080')
