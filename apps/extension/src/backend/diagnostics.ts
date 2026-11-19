@@ -132,7 +132,7 @@ function formatOutput(event: string, fields: Readonly<Record<string, unknown>>):
 }
 
 const SAFE_FIELD =
-  /^(code|phase|candidateSource|latencyBucket|hostVersion|method|status|attempt|count|durationMs|ownership|requestType|rpcMethod|rpcCode|wireVersion|state|trigger|change|surfaceKind)$/
+  /^(code|phase|candidateSource|latencyBucket|hostVersion|method|status|attempt|count|durationMs|ownership|requestType|rpcMethod|rpcCode|wireVersion|state|trigger|change|surfaceKind|localAuthority|loopbackEndpoint|desktopPairing|pidPresent|workspacePathCount|currentFolderCount|isWsl)$/
 /** Free-text fields never pass through raw; they get the shared scrubber below. */
 const REDACTED_TEXT_FIELD = /^(message|stack|detail|name)$/
 const RECENT_EVENT_FIELDS = new Set([
@@ -156,6 +156,13 @@ const RECENT_EVENT_FIELDS = new Set([
   'trigger',
   'change',
   'surfaceKind',
+  'localAuthority',
+  'loopbackEndpoint',
+  'desktopPairing',
+  'pidPresent',
+  'workspacePathCount',
+  'currentFolderCount',
+  'isWsl',
 ])
 const RECENT_EVENT_VALUE = /^[A-Za-z0-9_.+-]{1,128}$/u
 const DIAGNOSTIC_EVENTS = new Set([
@@ -171,6 +178,7 @@ const DIAGNOSTIC_EVENTS = new Set([
   'account-default-model-initialization-failed',
   'job-follow-failed',
   'assistant-preview',
+  'workspace-browser-authority',
   'request-unexpected',
   'webview-ready',
   'webview-response-undelivered',
