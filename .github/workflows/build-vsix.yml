@@ -52,7 +52,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Run focused WSL tests
-        run: pnpm exec vitest run apps/extension/src/backend/external-connection-access.spec.ts apps/extension/src/composition/workspace-state.spec.ts apps/extension/src/composition/workspace-browser.spec.ts
+        run: pnpm exec vitest run apps/extension/src/backend/external-connection-access.spec.ts apps/extension/src/composition/workspace-state.spec.ts apps/extension/src/composition/workspace-browser.spec.ts packages/dsh-adapter/test/alpha171-session-wire.spec.ts
 
       - name: Package VSIX
         run: pnpm package:vsix
