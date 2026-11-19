@@ -108,7 +108,8 @@ export function readAlpha171SessionSnapshot(
   profile?: AlphaV4SessionProfile,
 ): Alpha171SessionSnapshot | undefined {
   const record = plainRecord(value)
-  const header = plainRecord(record?.header)
+  const wireHeader = plainRecord(record?.header)
+  const header = wireHeader === undefined ? undefined : normalizeAlpha171SessionHeader(wireHeader)
   if (
     record?.type !== 'snapshot' ||
     header === undefined ||
@@ -438,6 +439,28 @@ function validateSurfaceMetadata(event: Alpha171SessionEvent, known: ReadonlySet
       throw new Error('surface event sourceEventSeqs must be unique and earlier')
     sources.add(source)
   }
+}
+
+/**
+ * Normalize a Windows DSH session cwd to the current WSL distribution's POSIX
+ * path before running host-platform absolute-path validation. Only the exact
+ * current distro UNC forms are translated; unrelated Windows paths remain
+ * untouched and are rejected by the normal Linux path validator.
+ */
+export function normalizeAlpha171SessionHeader(
+  value: Record<string, unknown>,
+  distroName = process.env.WSL_DISTRO_NAME,
+): Record<string, unknown> {
+  if (process.platform !== 'linux' || distroName === undefined || distroName.trim() === '')
+    return value
+  if (typeof value.cwd !== 'string') return value
+  const match = /^\\\\(?:wsl\.localhost|wsl\$)\\([^\\]+)\\(.*)$/iu.exec(value.cwd)
+  if (match === null || match[1]?.toLowerCase() !== distroName.toLowerCase()) return value
+  const relative = match[2] ?? ''
+  const segments = relative.split(/[\\/]+/u).filter((segment) => segment !== '')
+  if (segments.some((segment) => segment === '.' || segment === '..' || segment.includes('\0')))
+    return value
+  return { ...value, cwd: segments.length === 0 ? '/' : \`/\${segments.join('/')}\` }
 }
 
 function validAlpha171SessionHeader(value: unknown, profile?: AlphaV4SessionProfile): boolean {
