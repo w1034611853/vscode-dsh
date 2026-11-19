@@ -88,7 +88,7 @@ describe('Remote-WSL session header normalization', () => {
 
   it('does not normalize another distro or traversal paths', () => {
     const other = '\\\\wsl.localhost\\Ubuntu\\home\\project'
-    const traversal = '\\\\wsl.localhost\HwUbuntu-24.04\\home\\..\\etc'
+    const traversal = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\..\\etc'
     expect(normalizeAlpha171SessionHeader({ ...header, cwd: other }, 'HwUbuntu-24.04').cwd).toBe(other)
     expect(normalizeAlpha171SessionHeader({ ...header, cwd: traversal }, 'HwUbuntu-24.04').cwd).toBe(traversal)
   })
