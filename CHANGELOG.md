@@ -18,6 +18,8 @@
 
 ## 未发布
 
+- 新增 Git Worktree 基础识别模块：通过 Git common directory 区分同一仓库的主工作树与 linked worktree，并保留 branch、HEAD、detached、locked 和 prunable 状态；Git 子进程使用 argv 执行、超时、输出上限与取消。
+- 新增 Session cwd 到 Worktree 的 Host 侧匹配器，按规范化路径边界匹配并优先选择最深层 Worktree；不根据 DSH workspace ID、目录名或分支名猜测归属。该阶段尚未接入会话列表、跨 Worktree Session 授权或 cwd 切换。
 - Remote-WSL Desktop 配对现在同时支持 IPv4 `127.0.0.1` 与 IPv6 `[::1]` loopback 地址；修复 DSH Connect 返回 IPv6 loopback 时无法建立本地工作区权限证明、导致跨工作区继续按钮被禁用的问题。
 - 新增 Remote-WSL 连接 Windows DSH Desktop 的 HTTP 配对路径：使用已授权的 Desktop Connect loopback API 获取新 launch URL，不再依赖 WSL 中不可用的 Windows Named Pipe；配对后可获得本地工作区操作权限。
 - 识别当前 WSL 发行版对应的 `\\wsl.localhost\\<distro>\\...` / `\\wsl$\\<distro>\\...` 工作区路径，并在文件系统访问、工作区比较和跨项目打开时映射为 POSIX 路径；拒绝其他发行版和路径遍历段。

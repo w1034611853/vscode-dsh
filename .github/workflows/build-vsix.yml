@@ -3,20 +3,20 @@ name: Build VSIX
 on:
   workflow_dispatch:
   push:
-    branches: [feat/wsl-desktop-http-pairing]
+    branches: [feat/wsl-desktop-http-pairing, feat/git-worktree-session]
   pull_request:
     branches: [main]
     paths:
-      - "apps/**"
-      - "packages/**"
-      - "scripts/**"
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/build-vsix.yml"
+      - 'apps/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/build-vsix.yml'
 
 permissions:
   contents: read
@@ -47,6 +47,12 @@ jobs:
 
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check formatting for changed sources
+        run: pnpm exec prettier --check .github/workflows/build-vsix.yml CHANGELOG.md apps/extension/CHANGELOG.md apps/extension/src/git/*.ts docs/capability-matrix.md
+
+      - name: Lint Git Worktree modules
+        run: pnpm exec eslint apps/extension/src/git/*.ts
 
       - name: Typecheck
         run: pnpm typecheck

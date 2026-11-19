@@ -18,6 +18,8 @@
 
 ## 未发布
 
+- 新增 Git Worktree 基础识别模块：通过 Git common directory 区分同一仓库的主工作树与 linked worktree，并保留 branch、HEAD、detached、locked 和 prunable 状态；Git 子进程使用 argv 执行、超时、输出上限与取消。
+- 新增 Session cwd 到 Worktree 的 Host 侧匹配器，按规范化路径边界匹配并优先选择最深层 Worktree；不根据 DSH workspace ID、目录名或分支名猜测归属。该阶段尚未接入会话列表、跨 Worktree Session 授权或 cwd 切换。
 - 修复聚焦对话将同一轮的部分回复正文折进工具日志的问题。
 - 在支持 Agent Teams 的根会话中，可从模型菜单开启或关闭智能体团队协作，并同步 DSH 保存的状态。对话开始后，停用前会提示可能影响缓存和当前协作。
 - 为新版 DSH rc4 rc5 增加精确版本识别，并沿用已核对的会话协议。
