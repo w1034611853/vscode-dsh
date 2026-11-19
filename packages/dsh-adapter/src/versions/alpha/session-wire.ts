@@ -12,6 +12,7 @@ import {
 import type { AlphaSessionWireVersion } from './remote-mux.js'
 import { validAlpha151SessionEventFrame, validAlpha151SessionSnapshot } from '../alpha151/session-wire.js'
 import {
+  alpha171SessionSnapshotFailure,
   normalizeAlpha171Event,
   readAlpha171HistoryRecord,
   readAlpha171SessionSnapshot,
@@ -169,6 +170,20 @@ export function validAlphaWireSnapshot(
     : wireVersion === 'v3'
       ? validAlpha151SessionSnapshot(value)
       : validAlphaSessionSnapshot(value, wireVersion === 'v2')
+}
+
+/** Stable reason code for a rejected first Session follow frame. */
+export function alphaWireSnapshotFailure(
+  value: unknown,
+  wireVersion: AlphaSessionWireVersion,
+  profile?: AlphaV4SessionProfile,
+): string | undefined {
+  if (wireVersion === 'v4') return alpha171SessionSnapshotFailure(value, profile)
+  const source = recordOrUndefined(value)
+  if (source === undefined) return 'snapshot-not-object'
+  if (source.type !== 'snapshot') return 'snapshot-type-mismatch'
+  if (!Array.isArray(source.records)) return 'snapshot-records-not-array'
+  return validAlphaWireSnapshot(value, wireVersion, profile) ? undefined : 'snapshot-shape-invalid'
 }
 
 export function readAlphaWireSnapshot(
