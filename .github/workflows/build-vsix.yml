@@ -2,6 +2,8 @@ name: Build VSIX
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/wsl-desktop-http-pairing]
   pull_request:
     branches: [main]
     paths:
