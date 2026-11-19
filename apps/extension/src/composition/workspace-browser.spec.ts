@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { RequestGatewayDependencies } from './request-gateway-dependencies.js'
 import { workspaceBrowser, WORKSPACE_HANDOFF, WORKSPACE_BROWSER_STARTED_AT } from './workspace-browser.js'
 
@@ -83,6 +83,10 @@ function fixture(withSnapshot = false): BrowserFixture {
   ): Promise<unknown> => workspaceBrowser(deps, payload, signal)
   return { workspace, session, backend, history, get, update, ensure, request }
 }
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -252,6 +256,27 @@ describe('workspace browser Host boundary', () => {
     expect(native.execute).toHaveBeenCalledWith(
       'vscode.openFolder',
       { fsPath: f.workspace.path },
+      { forceNewWindow: true },
+    )
+  })
+
+  it('maps a Windows WSL UNC registry path before opening it in the WSL host', async () => {
+    vi.stubEnv('WSL_DISTRO_NAME', 'HwUbuntu-24.04')
+    const f = fixture()
+    f.workspace.path = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\fixture\\project'
+    f.session.cwd = '/home/fixture/project'
+
+    await f.request({ action: 'open', workspaceId: 'w1', sessionId: 's1' })
+
+    expect(native.stat).toHaveBeenCalledWith('/home/fixture/project')
+    expect(f.update).toHaveBeenCalledWith(WORKSPACE_HANDOFF, {
+      path: '/home/fixture/project',
+      sessionId: 's1',
+      time: expect.any(Number) as unknown,
+    })
+    expect(native.execute).toHaveBeenCalledWith(
+      'vscode.openFolder',
+      { fsPath: '/home/fixture/project' },
       { forceNewWindow: true },
     )
   })

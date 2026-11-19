@@ -628,6 +628,7 @@ export function createCompositionRoot(context: vscode.ExtensionContext): Composi
       const endpoint = endpointFromServerUrl(configuration.read().connection.serverUrl)
       await context.globalState.update(AUTOMATIC_DESKTOP_ORIGIN, undefined)
       await context.workspaceState.update('dsh.desktop.lastEndpoint', undefined)
+      await context.workspaceState.update('dsh.desktop.wslBootstrapEndpoint', undefined)
       await desktopPairing.clear()
       if (endpoint !== undefined) await externalConnection.clear(endpoint)
       void vscode.window.showInformationMessage('DSH：已清除连接凭据与配对，连接地址设置仍保留。')

@@ -79,6 +79,11 @@ import { hasLocalWorkspaceAuthority } from '../view/session-workspace-scope.js'
 const execFileAsync = promisify(execFile)
 const RUNTIME_PATH_STATE_KEY = 'dsh.runtime.lastKnownPath'
 
+/** Remote-WSL runs the Extension Host on Linux but can reach Windows localhost in mirrored mode. */
+function isWslRemoteHost(): boolean {
+  return process.platform === 'linux' && vscode.env.remoteName === 'wsl'
+}
+
 /** F5 explicitly requests a fresh owned runtime instead of discovering a stale companion. */
 function usesDevelopmentRuntime(context: Pick<vscode.ExtensionContext, 'extensionMode'>): boolean {
   return (
@@ -586,7 +591,79 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
     const isDesktopEndpoint =
       customEndpoint !== undefined &&
       (desktopOrigin === customEndpoint.baseUrl || automaticOrigin === customEndpoint.baseUrl)
-    if (customEndpoint !== undefined && isDesktopEndpoint && desktopPairing !== undefined) {
+    const wslBootstrapEndpoint = isWslRemoteHost()
+      ? endpointFromServerUrl(context.workspaceState.get<string>('dsh.desktop.wslBootstrapEndpoint'))
+      : undefined
+    if (
+      customEndpoint !== undefined &&
+      isDesktopEndpoint &&
+      isWslRemoteHost() &&
+      externalConnection !== undefined
+    ) {
+      const configuredEndpoint = customEndpoint
+      const candidates = [wslBootstrapEndpoint, configuredEndpoint]
+        .filter((candidate): candidate is BackendEndpoint => candidate !== undefined)
+        .filter(
+          (candidate, index, all) => all.findIndex((item) => item.baseUrl === candidate.baseUrl) === index,
+        )
+      let launchUrl: string | undefined
+      let launchOrigin: string | undefined
+      for (const candidate of candidates) {
+        const approved = await tracePreparation('pairing-record-check', attempt, signal, () =>
+          externalConnection.hasSavedAuthorization(candidate, signal),
+        )
+        if (!approved) continue
+        try {
+          const candidateLaunchUrl = await tracePreparation('pairing-resolve', attempt, signal, async () => {
+            // The saved owner cookie authorizes the Desktop Connect endpoint.
+            // It issues a fresh bridge URL, avoiding the Windows-only Named Pipe transport.
+            await externalConnection.prepare(candidate, signal ?? new AbortController().signal)
+            return externalConnection.readDesktopLaunchUrl(candidate, signal)
+          })
+          signal?.throwIfAborted()
+          if (candidateLaunchUrl !== undefined) {
+            launchUrl = candidateLaunchUrl
+            launchOrigin = candidate.baseUrl
+            break
+          }
+        } catch (error) {
+          signal?.throwIfAborted()
+          if (error instanceof Error && error.name === 'AbortError') throw error
+          // A stale bootstrap endpoint may disappear after Desktop restarts.
+          // Try the other already-authorized local endpoint before manual setup.
+        }
+      }
+      signal?.throwIfAborted()
+      if (launchUrl !== undefined) {
+        const launch = parseDesktopLaunchUrl(launchUrl)
+        if (
+          launch.endpoint.host !== '127.0.0.1' ||
+          new URL(launch.endpoint.baseUrl).protocol !== 'http:' ||
+          launch.token === ''
+        )
+          throw new AppError({
+            code: 'PROTOCOL_ERROR',
+            message: 'The authenticated WSL Desktop connection returned an invalid launch address.',
+            retryable: false,
+          })
+        await tracePreparation('paired-authorization', attempt, signal, () =>
+          externalConnection.authorizePairedDesktop(launch.endpoint, launch.token, signal),
+        )
+        usingPairedLaunch = true
+        if (launch.endpoint.baseUrl !== configuredEndpoint.baseUrl || current.connection.runtimeVersion)
+          await tracePreparation('configuration-save', attempt, signal, () =>
+            persistPairedDesktop(launchOrigin ?? configuredEndpoint.baseUrl, launch.endpoint, signal),
+          )
+        customEndpoint = launch.endpoint
+      }
+    }
+    if (
+      customEndpoint !== undefined &&
+      isDesktopEndpoint &&
+      desktopPairing !== undefined &&
+      !isWslRemoteHost() &&
+      !usingPairedLaunch
+    ) {
       const origin = customEndpoint.baseUrl
       let launchUrl: string | undefined
       try {
@@ -725,6 +802,7 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
       desktopOrigin === current.connection.serverUrl &&
       deps.desktopPairing &&
       externalConnection &&
+      !isWslRemoteHost() &&
       !(await deps.desktopPairing.has(desktopOrigin))
     ) {
       // Optional enrollment after native owner login; older connectors remain usable.
@@ -1015,7 +1093,7 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
         throw new DOMException('Connection selection changed.', 'AbortError')
     }
     assertCurrent()
-    if (deps.desktopPairing?.keyFor !== undefined && key === undefined)
+    if (deps.desktopPairing?.keyFor !== undefined && key === undefined && !isWslRemoteHost())
       throw new DOMException('Desktop pairing was cleared.', 'AbortError')
     const wasConfiguring = configuringTransport
     configuringTransport = true
@@ -1197,8 +1275,11 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
           await externalConnection.authorize(selected, signal, desktop?.launchToken)
         }
         signal?.throwIfAborted()
-        if (mode === 'custom' && desktop !== undefined)
+        if (mode === 'custom' && desktop !== undefined) {
           await context.workspaceState.update('dsh.desktop.lastEndpoint', endpoint)
+          if (isWslRemoteHost() && endpoint !== undefined)
+            await context.workspaceState.update('dsh.desktop.wslBootstrapEndpoint', endpoint)
+        }
         await writeTransportSettings(vscode.workspace.getConfiguration('dsh'), writes)
         if (revision !== configurationRevision)
           throw new DOMException('Connection settings changed.', 'AbortError')
@@ -1258,6 +1339,7 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
         await deps.desktopPairing?.clear()
         await context.globalState.update(AUTOMATIC_DESKTOP_ORIGIN, undefined)
         await context.workspaceState.update('dsh.desktop.lastEndpoint', undefined)
+        await context.workspaceState.update('dsh.desktop.wslBootstrapEndpoint', undefined)
         await context.workspaceState.update('dsh.lastEndpoint', undefined)
         await resetConnectionSettings(vscode.workspace)
         publishState({ kind: 'idle' }, 'reset')

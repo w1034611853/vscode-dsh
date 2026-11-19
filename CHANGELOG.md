@@ -18,6 +18,10 @@
 
 ## 未发布
 
+- 新增 Remote-WSL 连接 Windows DSH Desktop 的 HTTP 配对路径：使用已授权的 Desktop Connect loopback API 获取新 launch URL，不再依赖 WSL 中不可用的 Windows Named Pipe；配对后可获得本地工作区操作权限。
+- 识别当前 WSL 发行版对应的 `\\wsl.localhost\\<distro>\\...` / `\\wsl$\\<distro>\\...` 工作区路径，并在文件系统访问、工作区比较和跨项目打开时映射为 POSIX 路径；拒绝其他发行版和路径遍历段。
+- 为 WSL HTTP 配对、launch URL 校验和 UNC 路径映射补充单元测试。
+
 - 修复聚焦对话将同一轮的部分回复正文折进工具日志的问题。
 - 在支持 Agent Teams 的根会话中，可从模型菜单开启或关闭智能体团队协作，并同步 DSH 保存的状态。对话开始后，停用前会提示可能影响缓存和当前协作。
 - 为新版 DSH rc4 rc5 增加精确版本识别，并沿用已核对的会话协议。

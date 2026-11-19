@@ -79,7 +79,7 @@ export class ExternalConnectionAccess {
     return this.authorizeInternal(endpoint, callerSignal, providedToken, false)
   }
 
-  /** Only a cryptographically authenticated local pairing may authorize a fresh origin silently. */
+  /** Only an authenticated Desktop handoff (native pairing or owner-cookie HTTP) may authorize silently. */
   public async authorizePairedDesktop(
     endpoint: BackendEndpoint,
     token: string,
@@ -144,6 +144,90 @@ export class ExternalConnectionAccess {
         : undefined
     } catch {
       callerSignal?.throwIfAborted()
+      return undefined
+    }
+  }
+
+  /**
+   * Read a fresh Desktop launch URL through the authenticated localhost HTTP API.
+   * Remote-WSL cannot use the Windows named-pipe pairing transport, but it can
+   * reach the same owner-authenticated endpoint through WSL mirrored networking.
+   */
+  public async readDesktopLaunchUrl(
+    endpoint: BackendEndpoint,
+    callerSignal?: AbortSignal,
+  ): Promise<string | undefined> {
+    if (endpoint.host !== '127.0.0.1' || new URL(endpoint.baseUrl).protocol !== 'http:') return undefined
+    callerSignal?.throwIfAborted()
+    this.requireTrust()
+    const cookie = this.cookie(endpoint)
+    if (cookie === undefined) return undefined
+    const signal = AbortSignal.any([
+      this.closed.signal,
+      this.revisionAbort.signal,
+      AbortSignal.timeout(2000),
+      ...(callerSignal === undefined ? [] : [callerSignal]),
+    ])
+    try {
+      // An empty POST is the Desktop connector's explicit "copy connection
+      // address" operation. Unlike status reads, it returns a launch token and
+      // therefore must only be issued with the already-approved owner cookie.
+      const response = await this.dependencies.network.fetch(
+        `${endpoint.baseUrl}/api/vscode-desktop-connect`,
+        {
+          method: 'POST',
+          headers: { Cookie: cookie },
+          redirect: 'error',
+          signal,
+        },
+      )
+      if (response.status !== 200 || !response.headers.get('content-type')?.startsWith('application/json')) {
+        await releaseResponse(response)
+        return undefined
+      }
+      const text = await readBoundedResponseText(response, 4096)
+      signal.throwIfAborted()
+      this.requireTrust()
+      if (text === undefined) return undefined
+      let value: unknown
+      try {
+        value = JSON.parse(text) as unknown
+      } catch {
+        return undefined
+      }
+      if (
+        typeof value !== 'object' ||
+        value === null ||
+        !('url' in value) ||
+        typeof value.url !== 'string' ||
+        value.url.length > 8192
+      )
+        return undefined
+      const launch = new URL(value.url)
+      const tokens = launch.searchParams.getAll('token')
+      const port = Number(launch.port)
+      if (
+        launch.protocol !== 'http:' ||
+        launch.hostname !== '127.0.0.1' ||
+        !Number.isSafeInteger(port) ||
+        port < 1 ||
+        port > 65535 ||
+        launch.pathname !== '/' ||
+        launch.hash !== '' ||
+        launch.username !== '' ||
+        launch.password !== '' ||
+        tokens.length !== 1 ||
+        tokens[0] === undefined ||
+        tokens[0].length === 0 ||
+        tokens[0].length > 4096 ||
+        /[\r\n\0]/u.test(tokens[0]) ||
+        [...launch.searchParams.keys()].some((key) => key !== 'token')
+      )
+        return undefined
+      return launch.href
+    } catch {
+      callerSignal?.throwIfAborted()
+      this.requireTrust()
       return undefined
     }
   }
@@ -571,6 +655,28 @@ async function readDesktopStatus(response: Response): Promise<unknown> {
       if (size > 1024) return undefined
       text += decoder.decode(value, { stream: true })
     }
+  } finally {
+    await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
+  }
+}
+
+async function readBoundedResponseText(response: Response, maxBytes: number): Promise<string | undefined> {
+  const reader = response.body?.getReader()
+  if (reader === undefined) return undefined
+  const decoder = new TextDecoder('utf-8', { fatal: true })
+  let size = 0
+  let text = ''
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) return text + decoder.decode()
+      size += value.byteLength
+      if (size > maxBytes) return undefined
+      text += decoder.decode(value, { stream: true })
+    }
+  } catch {
+    return undefined
   } finally {
     await reader.cancel().catch(() => undefined)
     reader.releaseLock()
