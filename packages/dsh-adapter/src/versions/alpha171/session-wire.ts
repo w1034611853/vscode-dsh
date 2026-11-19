@@ -195,6 +195,36 @@ export function validAlpha171HistoryRecord(
   )
 }
 
+/**
+ * Return a bounded, non-sensitive reason when a live Session follow snapshot
+ * cannot be decoded. This is diagnostic metadata only: it never includes
+ * header values, event bodies, projection values, IDs, or prompt content.
+ */
+export function alpha171SessionSnapshotFailure(
+  value: unknown,
+  profile?: AlphaV4SessionProfile,
+): string | undefined {
+  const record = plainRecord(value)
+  if (record === undefined) return 'snapshot-not-object'
+  if (record.type !== 'snapshot') return 'snapshot-type-mismatch'
+  const expectedKeys = Object.hasOwn(record, 'assistantStream')
+    ? ['type', 'header', 'cursor', 'records', 'hasMore', 'projections', 'assistantStream']
+    : ['type', 'header', 'cursor', 'records', 'hasMore', 'projections']
+  if (!hasExactKeys(record, expectedKeys)) return 'snapshot-keys-invalid'
+  if (!validAlpha171SessionHeader(record.header, profile)) return 'snapshot-header-invalid'
+  if (!isSafeCursor(record.cursor)) return 'snapshot-cursor-invalid'
+  if (!Array.isArray(record.records)) return 'snapshot-records-not-array'
+  if (!record.records.every((entry) => validAlpha171HistoryRecord(entry, profile)))
+    return 'snapshot-record-invalid'
+  if (!validSnapshotRelationships(record, knownTypes(profile), profile))
+    return 'snapshot-relationships-invalid'
+  if (typeof record.hasMore !== 'boolean') return 'snapshot-has-more-invalid'
+  if (!validAlpha171ProjectionBaseline(record.projections)) return 'snapshot-projections-invalid'
+  if (record.assistantStream !== undefined && !isJsonLike(record.assistantStream))
+    return 'snapshot-assistant-stream-invalid'
+  return undefined
+}
+
 export function validAlpha171SessionSnapshot(
   value: unknown,
   profile?: AlphaV4SessionProfile,
