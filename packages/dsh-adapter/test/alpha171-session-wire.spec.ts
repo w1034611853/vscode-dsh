@@ -76,7 +76,7 @@ describe('native alpha171 Session V4 snapshot diagnostics', () => {
 
 describe('Remote-WSL session header normalization', () => {
   it('maps the current distro UNC cwd to POSIX before V4 validation and in the returned snapshot', () => {
-    const unc = '\\\\wsl.localhost\\HwUbuntu-24.04\home\w00640205\codehub\ai\WirelessArchESL'
+    const unc = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\w00640205\\codehub\\ai\\WirelessArchESL'
     const sourceHeader = { ...header, cwd: unc }
     expect(normalizeAlpha171SessionHeader(sourceHeader, 'HwUbuntu-24.04').cwd).toBe(
       '/home/w00640205/codehub/ai/WirelessArchESL',
@@ -87,8 +87,8 @@ describe('Remote-WSL session header normalization', () => {
   })
 
   it('does not normalize another distro or traversal paths', () => {
-    const other = '\\\\wsl.localhost\\Ubuntu\home\project'
-    const traversal = '\\\\wsl.localhost\HwUbuntu-24.04\home\..\etc'
+    const other = '\\\\wsl.localhost\\Ubuntu\\home\\project'
+    const traversal = '\\\\wsl.localhost\HwUbuntu-24.04\\home\\..\\etc'
     expect(normalizeAlpha171SessionHeader({ ...header, cwd: other }, 'HwUbuntu-24.04').cwd).toBe(other)
     expect(normalizeAlpha171SessionHeader({ ...header, cwd: traversal }, 'HwUbuntu-24.04').cwd).toBe(traversal)
   })
