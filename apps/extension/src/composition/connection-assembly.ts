@@ -637,7 +637,7 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
       if (launchUrl !== undefined) {
         const launch = parseDesktopLaunchUrl(launchUrl)
         if (
-          launch.endpoint.host !== '127.0.0.1' ||
+          !isLoopbackEndpoint(launch.endpoint) ||
           new URL(launch.endpoint.baseUrl).protocol !== 'http:' ||
           launch.token === ''
         )
