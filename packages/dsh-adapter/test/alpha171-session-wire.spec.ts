@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  alpha171SessionSnapshotFailure,
   validAlpha171SessionEvent,
   validAlpha171SessionSnapshot,
   normalizeAlpha171Event,
@@ -54,6 +55,23 @@ function snapshot(): Record<string, unknown> & { records: unknown[] } {
     ],
   }
 }
+describe('native alpha171 Session V4 snapshot diagnostics', () => {
+  it('classifies malformed snapshot shapes without exposing payload values', () => {
+    expect(alpha171SessionSnapshotFailure(null)).toBe('snapshot-not-object')
+    expect(alpha171SessionSnapshotFailure({ type: 'event' })).toBe('snapshot-type-mismatch')
+    expect(alpha171SessionSnapshotFailure({ ...snapshot(), header: { secret: 'must-not-log' } })).toBe(
+      'snapshot-header-invalid',
+    )
+    expect(alpha171SessionSnapshotFailure({ ...snapshot(), records: 'private' })).toBe(
+      'snapshot-records-not-array',
+    )
+    expect(alpha171SessionSnapshotFailure({ ...snapshot(), projections: { secret: 'must-not-log' } })).toBe(
+      'snapshot-projections-invalid',
+    )
+    expect(alpha171SessionSnapshotFailure(snapshot())).toBeUndefined()
+  })
+})
+
 describe('native alpha171 Session V4 admission', () => {
   it('accepts developer additions/removals and maps a prompt-only watermark', () => {
     expect(validAlpha171SessionEvent(developer)).toBe(true)
