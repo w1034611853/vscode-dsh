@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { AppError, isLoopbackEndpoint, type BackendEndpoint } from '@dsh-vscode/domain'
+import { AppError, isLoopbackEndpoint, parseServerOrigin, type BackendEndpoint } from '@dsh-vscode/domain'
 import { isDshPackageVersion } from '@dsh-vscode/dsh-adapter'
 import { type EndpointNetwork, waitForSignal } from './endpoint-network.js'
 
@@ -85,7 +85,7 @@ export class ExternalConnectionAccess {
     token: string,
     signal?: AbortSignal,
   ): Promise<void> {
-    if (endpoint.host !== '127.0.0.1' || new URL(endpoint.baseUrl).protocol !== 'http:') throw denied()
+    if (!isLoopbackEndpoint(endpoint) || new URL(endpoint.baseUrl).protocol !== 'http:') throw denied()
     signal?.throwIfAborted()
     this.requireTrust()
     const existing = await this.read(endpoint)
@@ -157,7 +157,7 @@ export class ExternalConnectionAccess {
     endpoint: BackendEndpoint,
     callerSignal?: AbortSignal,
   ): Promise<string | undefined> {
-    if (endpoint.host !== '127.0.0.1' || new URL(endpoint.baseUrl).protocol !== 'http:') return undefined
+    if (!isLoopbackEndpoint(endpoint) || new URL(endpoint.baseUrl).protocol !== 'http:') return undefined
     callerSignal?.throwIfAborted()
     this.requireTrust()
     const cookie = this.cookie(endpoint)
@@ -206,9 +206,11 @@ export class ExternalConnectionAccess {
       const launch = new URL(value.url)
       const tokens = launch.searchParams.getAll('token')
       const port = Number(launch.port)
+      const launchEndpoint = parseServerOrigin(launch.origin)
       if (
         launch.protocol !== 'http:' ||
-        launch.hostname !== '127.0.0.1' ||
+        launchEndpoint === undefined ||
+        !isLoopbackEndpoint(launchEndpoint) ||
         !Number.isSafeInteger(port) ||
         port < 1 ||
         port > 65535 ||
