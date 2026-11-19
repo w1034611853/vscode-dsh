@@ -115,10 +115,18 @@ export class WebviewMessageRouter {
     const trace = (phase: string, error?: unknown): void => {
       if (
         isFeature ||
-        !['session.open', 'session.transcript.navigate', 'session.transcript.resync'].includes(request.type)
+        ![
+          'session.open',
+          'session.transcript.navigate',
+          'session.transcript.resync',
+          'session.sendPrompt',
+        ].includes(request.type)
       )
         return
-      const reason = error instanceof AppError ? error.context?.reason : undefined
+      const context = error instanceof AppError ? error.context : undefined
+      const reason = context?.reason
+      const rpcMethod = typeof context?.rpcMethod === 'string' ? context.rpcMethod : undefined
+      const rpcCode = typeof context?.rpcCode === 'string' ? context.rpcCode : undefined
       const knownReason =
         typeof reason === 'string' &&
         [
@@ -141,7 +149,9 @@ export class WebviewMessageRouter {
             ? {}
             : {
                 code: error instanceof AppError ? error.code : 'INTERNAL_ERROR',
-                method: knownReason,
+                method: rpcMethod ?? knownReason,
+                ...(rpcMethod === undefined ? {} : { rpcMethod }),
+                ...(rpcCode === undefined ? {} : { rpcCode }),
               }),
         })
       } catch {
