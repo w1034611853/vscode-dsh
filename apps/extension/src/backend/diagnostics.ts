@@ -132,7 +132,7 @@ function formatOutput(event: string, fields: Readonly<Record<string, unknown>>):
 }
 
 const SAFE_FIELD =
-  /^(code|phase|candidateSource|latencyBucket|hostVersion|method|status|attempt|count|durationMs|ownership|requestType|rpcMethod|rpcCode|state|trigger|change|surfaceKind)$/
+  /^(code|phase|candidateSource|latencyBucket|hostVersion|method|status|attempt|count|durationMs|ownership|requestType|rpcMethod|rpcCode|wireVersion|state|trigger|change|surfaceKind)$/
 /** Free-text fields never pass through raw; they get the shared scrubber below. */
 const REDACTED_TEXT_FIELD = /^(message|stack|detail|name)$/
 const RECENT_EVENT_FIELDS = new Set([
@@ -149,6 +149,7 @@ const RECENT_EVENT_FIELDS = new Set([
   'requestType',
   'rpcMethod',
   'rpcCode',
+  'wireVersion',
   'state',
   'source',
   'connectionGeneration',
