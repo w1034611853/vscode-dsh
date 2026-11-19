@@ -101,6 +101,39 @@ describe('external connection credentials', () => {
     await expect(f.access.readDesktopRuntimeVersion(target)).resolves.toBeUndefined()
   })
 
+  it('reads a fresh Desktop launch URL through the authenticated localhost connector', async (): Promise<void> => {
+    const f = fixture()
+    const target = endpoint('http://127.0.0.1:3080')
+    await f.access.authorize(target, undefined, 'initial-desktop-token')
+    await f.access.prepare(target, new AbortController().signal)
+    const launchUrl = 'http://127.0.0.1:3180/?token=rotated-desktop-token'
+    f.fetch.mockResolvedValueOnce(Response.json({ url: launchUrl }))
+
+    await expect(f.access.readDesktopLaunchUrl(target)).resolves.toBe(launchUrl)
+    expect(f.fetch).toHaveBeenLastCalledWith(
+      `${target.baseUrl}/api/vscode-desktop-connect`,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { Cookie: cookie },
+        redirect: 'error',
+      }),
+    )
+  })
+
+  it('rejects non-loopback Desktop launch URLs and URLs that omit the token', async (): Promise<void> => {
+    const f = fixture()
+    const target = endpoint('http://127.0.0.1:3080')
+    await f.access.authorize(target, undefined, 'initial-desktop-token')
+    await f.access.prepare(target, new AbortController().signal)
+
+    f.fetch.mockResolvedValueOnce(Response.json({ url: 'http://example.com:3081/?token=remote-origin' }))
+    await expect(f.access.readDesktopLaunchUrl(target)).resolves.toBeUndefined()
+    f.fetch.mockResolvedValueOnce(Response.json({ url: 'https://127.0.0.1:3180/?token=insecure-scheme' }))
+    await expect(f.access.readDesktopLaunchUrl(target)).resolves.toBeUndefined()
+    f.fetch.mockResolvedValueOnce(Response.json({ url: `${target.baseUrl}/` }))
+    await expect(f.access.readDesktopLaunchUrl(target)).resolves.toBeUndefined()
+  })
+
   it('checks saved approval by execution environment and full origin without network or credential writes', async (): Promise<void> => {
     const f = fixture()
     const target = endpoint('http://127.0.0.1:3080')

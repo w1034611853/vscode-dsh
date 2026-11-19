@@ -1,25 +1,64 @@
 name: Build VSIX
+
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "scripts/**"
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/build-vsix.yml"
+
 permissions:
   contents: read
+
+concurrency:
+  group: build-vsix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   package:
+    name: Build installable VSIX
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 11.19.0
-      - uses: actions/setup-node@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22.19.0
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check
-      - run: pnpm package:vsix
-      - uses: actions/upload-artifact@v4
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run focused WSL tests
+        run: pnpm exec vitest run apps/extension/src/backend/external-connection-access.spec.ts apps/extension/src/composition/workspace-state.spec.ts apps/extension/src/composition/workspace-browser.spec.ts
+
+      - name: Package VSIX
+        run: pnpm package:vsix
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
         with:
-          name: dsh-coding-agent
+          name: dsh-coding-agent-wsl-${{ github.sha }}
           path: artifacts/*.vsix
           if-no-files-found: error
+          retention-days: 14

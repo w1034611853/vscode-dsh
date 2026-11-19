@@ -5,7 +5,7 @@ import { isInjectedUserMessage } from '@dsh-vscode/timeline'
 import type { WebviewRequest } from '@dsh-vscode/webview-protocol'
 import type { RequestGatewayDependencies } from './request-gateway-dependencies.js'
 import { hasLocalWorkspaceAuthority } from '../view/session-workspace-scope.js'
-import { sameWorkspacePath } from './workspace-state.js'
+import { sameWorkspacePath, toCurrentHostWorkspacePath } from './workspace-state.js'
 
 export const WORKSPACE_HANDOFF = 'dsh.workspace.browserHandoff'
 export const WORKSPACE_BROWSER_STARTED_AT = Date.now()
@@ -98,16 +98,19 @@ export async function workspaceBrowser(
   if (request.action === 'open') {
     if (!local || !vscode.workspace.isTrusted || workspace.path === undefined) throw denied()
     // The path comes only from the authoritative registry, never browser input.
-    if (!(await stat(workspace.path)).isDirectory()) throw denied()
+    // A Windows DSH may persist a WSL folder as \\wsl.localhost\\<distro>\\...;
+    // translate that registered path to the POSIX spelling used by this WSL host.
+    const localPath = toCurrentHostWorkspacePath(workspace.path)
+    if (!(await stat(localPath)).isDirectory()) throw denied()
     if (session.cwd && !sameWorkspacePath(session.cwd, workspace.path)) throw denied()
     signal.throwIfAborted()
     await deps.context.globalState.update(WORKSPACE_HANDOFF, {
-      path: workspace.path,
+      path: localPath,
       sessionId: session.id,
       time: Date.now(),
     })
     try {
-      await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(workspace.path), {
+      await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(localPath), {
         forceNewWindow: true,
       })
     } catch (error) {

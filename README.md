@@ -71,6 +71,8 @@ DSH Coding Agent 是一款社区维护的 VS Code 扩展。你可以在编辑器
 
 已保存的手动地址优先使用，凭据由 VS Code SecretStorage 保存。Windows 同机连接中断时，扩展会尝试重连，失败后会提示更新地址。
 
+**Remote-WSL 连接 Windows DSH Desktop**：WSL2 需要启用 mirrored networking（`wslinfo --networking-mode` 应输出 `mirrored`），并保持 Windows IPv6 网络组件可用。首次在 WSL 窗口中手动粘贴 Desktop 连接地址后，扩展会通过已授权的 Desktop Connect HTTP API 完成后续配对和重连，不依赖 Windows Named Pipe。Windows UNC 形式的 WSL 工作区路径会在发行版名称匹配时映射为当前 WSL Host 的 POSIX 路径。详见 [Remote-WSL Desktop 连接说明](docs/remote-wsl-desktop.md)。
+
 #### 方式二：使用 DSH CLI
 
 1. 安装 Node.js，版本要求见[兼容说明](docs/dsh-contract.md)。
