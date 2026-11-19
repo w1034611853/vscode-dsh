@@ -47,5 +47,5 @@ export function isCanonicalEndpoint(endpoint: BackendEndpoint): boolean {
 
 /** Discovery remains local even when explicitly selected custom endpoints are remote. */
 export function isLoopbackEndpoint(endpoint: BackendEndpoint): boolean {
-  return isCanonicalEndpoint(endpoint) && (endpoint.host === '127.0.0.1' || endpoint.host === 'localhost')
+  return isCanonicalEndpoint(endpoint) && (endpoint.host === '127.0.0.1' || endpoint.host === 'localhost' || endpoint.host === '[::1]')
 }
