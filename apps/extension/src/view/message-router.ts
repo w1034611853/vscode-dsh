@@ -127,6 +127,10 @@ export class WebviewMessageRouter {
       const reason = context?.reason
       const rpcMethod = typeof context?.rpcMethod === 'string' ? context.rpcMethod : undefined
       const rpcCode = typeof context?.rpcCode === 'string' ? context.rpcCode : undefined
+      const wireVersion =
+        typeof context?.wireVersion === 'string' && ['v0', 'v2', 'v3', 'v4'].includes(context.wireVersion)
+          ? context.wireVersion
+          : undefined
       const knownReason =
         typeof reason === 'string' &&
         [
@@ -152,6 +156,7 @@ export class WebviewMessageRouter {
                 method: rpcMethod ?? knownReason,
                 ...(rpcMethod === undefined ? {} : { rpcMethod }),
                 ...(rpcCode === undefined ? {} : { rpcCode }),
+                ...(wireVersion === undefined ? {} : { wireVersion }),
               }),
         })
       } catch {
