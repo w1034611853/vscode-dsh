@@ -126,7 +126,9 @@ export function createBackendAttach(deps: BackendAttachDependencies): BackendAtt
         event.type === 'workspace.order.changed' ||
         event.type === 'archived.sessions.changed' ||
         event.type === 'session.added' ||
-        event.type === 'session.removed'
+        event.type === 'session.removed' ||
+        (event.type === 'session.projection' && event.key === 'workingDirectory') ||
+        event.type === 'session.subscribed'
       )
         invalidateCurrentWorkspaceSessionDetails()
       if (event.type === 'connection.lost') {

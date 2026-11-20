@@ -1,4 +1,9 @@
-import { isLoopbackEndpoint, type ConnectedBackend, type SessionSummary } from '@dsh-vscode/domain'
+import {
+  effectiveSessionDirectory,
+  isLoopbackEndpoint,
+  type ConnectedBackend,
+  type SessionSummary,
+} from '@dsh-vscode/domain'
 
 /** Loopback needs independent Host evidence before DSH paths can be treated as local. */
 export function hasLocalWorkspaceAuthority(backend: ConnectedBackend | undefined): boolean {
@@ -19,7 +24,7 @@ export interface SessionWorkspaceFolder {
 export interface SessionWorkspaceScopeInput {
   /** The folders VS Code currently owns, in `workspace.list` order. */
   readonly folders: readonly SessionWorkspaceFolder[]
-  readonly session: Pick<SessionSummary, 'cwd'>
+  readonly session: Pick<SessionSummary, 'cwd' | 'projection'>
   readonly samePath: (left: string, right: string) => boolean
 }
 
@@ -35,10 +40,13 @@ export interface SessionWorkspaceScopeInput {
 export function sessionWorkspaceFolderId(input: SessionWorkspaceScopeInput): string | undefined {
   const { folders, session } = input
   if (folders.length === 0) return undefined
-  if (session.cwd !== undefined) {
-    const cwdFolder = folders.find((folder) => input.samePath(folder.path, session.cwd as string))
+  const cwd = effectiveSessionDirectory(session)
+  if (cwd !== undefined) {
+    const cwdFolder = folders.find((folder) => input.samePath(folder.path, cwd))
     if (cwdFolder !== undefined) return cwdFolder.id
   }
+  if (session.projection !== undefined && Object.hasOwn(session.projection.values, 'workingDirectory'))
+    return undefined
   // One folder open is the whole workspace; several folders and no matching
   // cwd leave the session ambiguous.
   return folders.length === 1 ? folders[0]?.id : undefined

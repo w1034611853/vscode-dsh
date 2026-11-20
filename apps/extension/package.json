@@ -2,7 +2,7 @@
   "name": "dsh-coding-agent",
   "displayName": "DSH Coding Agent",
   "description": "%extension.description%",
-  "version": "0.1.93",
+  "version": "0.1.94",
   "publisher": "mcdottok",
   "icon": "resources/dsh.png",
   "license": "MIT",
@@ -64,7 +64,8 @@
     "onCommand:dsh.manageEditorCompanion",
     "onCommand:dsh.installEditorCompanion",
     "onCommand:dsh.undoEditorEdit",
-    "onCommand:dsh.connectDesktop"
+    "onCommand:dsh.connectDesktop",
+    "onCommand:dsh.browseWorktreeSessions"
   ],
   "scripts": {
     "build": "node esbuild.mjs",
@@ -254,6 +255,11 @@
         "command": "dsh.resetConnection",
         "title": "重置连接 / Reset Connection",
         "category": "DSH"
+      },
+      {
+        "command": "dsh.browseWorktreeSessions",
+        "icon": "$(git-branch)",
+        "title": "DSH: Browse Git Worktree Sessions / 在工作树中继续原会话"
       }
     ],
     "menus": {
@@ -406,6 +412,9 @@
         },
         {
           "command": "dsh.resetConnection"
+        },
+        {
+          "command": "dsh.browseWorktreeSessions"
         }
       ]
     },

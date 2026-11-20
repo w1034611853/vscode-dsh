@@ -11,7 +11,8 @@ import type { BackendService, WorkspaceUseCases } from '@dsh-vscode/application'
 import type { TemporaryWorkspaceManager } from '../backend/temporary-workspace.js'
 import { registerWorkspaceFolders } from '../backend/register-workspace-folders.js'
 import { ownsCurrentWorkspaceSession } from '../view/session-ownership.js'
-import { sameWorkspacePath } from './workspace-state.js'
+import { sameWorkspacePath, toRegisteredWorkspacePath } from './workspace-state.js'
+import { hasLocalWorkspaceAuthority } from '../view/session-workspace-scope.js'
 import { sessionBelongsToWorkspaces } from './workspace-guards.js'
 import { sessionOpenFailure } from './session-payload.js'
 
@@ -118,7 +119,19 @@ export function createSessionScope(deps: SessionScopeDependencies): SessionScope
     return registerWorkspaceFolders(
       folders.map((folder) => folder.uri.fsPath),
       workspaces,
-      (input, requestSignal) => workspaceUseCases.create(input, requestSignal),
+      (input, requestSignal) =>
+        workspaceUseCases.create(
+          {
+            ...input,
+            path: hasLocalWorkspaceAuthority(backendService.requireBackend().connection)
+              ? toRegisteredWorkspacePath(
+                  input.path,
+                  workspaces.flatMap((item) => (item.path === undefined ? [] : [item.path])),
+                )
+              : input.path,
+          },
+          requestSignal,
+        ),
       sameWorkspacePath,
       trusted,
       signal,

@@ -15,6 +15,19 @@ export interface SessionProjectionSnapshot {
   readonly values: SessionProjectionValues
 }
 
+/** The durable execution directory takes precedence over the immutable project header. */
+export function effectiveSessionDirectory(session: {
+  readonly cwd?: string
+  readonly projection?: SessionProjectionSnapshot
+}): string | undefined {
+  const values = session.projection?.values
+  if (values !== undefined && Object.hasOwn(values, 'workingDirectory')) {
+    const directory = values.workingDirectory
+    return typeof directory === 'string' && directory.trim() !== '' ? directory : undefined
+  }
+  return session.cwd
+}
+
 /**
  * Host-advertised image admission limits carried by DSH's `imageLimits`
  * session projection. Older hosts may omit the projection or the rc.8-only

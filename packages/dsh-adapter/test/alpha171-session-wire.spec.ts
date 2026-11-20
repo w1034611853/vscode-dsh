@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   alpha171SessionSnapshotFailure,
   normalizeAlpha171SessionHeader,
@@ -75,22 +75,32 @@ describe('native alpha171 Session V4 snapshot diagnostics', () => {
 })
 
 describe('Remote-WSL session header normalization', () => {
+  beforeEach(() => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
   it('maps the current distro UNC cwd to POSIX before V4 validation and in the returned snapshot', () => {
-    const unc = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\w00640205\\codehub\\ai\\WirelessArchESL'
+    const unc = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\fixture\\project'
     const sourceHeader = { ...header, cwd: unc }
-    expect(normalizeAlpha171SessionHeader(sourceHeader, 'HwUbuntu-24.04').cwd).toBe(
-      '/home/w00640205/codehub/ai/WirelessArchESL',
-    )
+    expect(normalizeAlpha171SessionHeader(sourceHeader, 'HwUbuntu-24.04').cwd).toBe('/home/fixture/project')
     expect(normalizeAlpha171SessionHeader(sourceHeader, 'Ubuntu').cwd).toBe(unc)
-    const parsed = readAlpha171SessionSnapshot({ ...snapshot(), header: sourceHeader }, undefined, 'HwUbuntu-24.04')
-    expect(parsed?.header.cwd).toBe('/home/w00640205/codehub/ai/WirelessArchESL')
+    const parsed = readAlpha171SessionSnapshot(
+      { ...snapshot(), header: sourceHeader },
+      undefined,
+      'HwUbuntu-24.04',
+    )
+    expect(parsed?.header.cwd).toBe('/home/fixture/project')
   })
 
   it('does not normalize another distro or traversal paths', () => {
     const other = '\\\\wsl.localhost\\Ubuntu\\home\\project'
     const traversal = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\..\\etc'
     expect(normalizeAlpha171SessionHeader({ ...header, cwd: other }, 'HwUbuntu-24.04').cwd).toBe(other)
-    expect(normalizeAlpha171SessionHeader({ ...header, cwd: traversal }, 'HwUbuntu-24.04').cwd).toBe(traversal)
+    expect(normalizeAlpha171SessionHeader({ ...header, cwd: traversal }, 'HwUbuntu-24.04').cwd).toBe(
+      traversal,
+    )
   })
 })
 

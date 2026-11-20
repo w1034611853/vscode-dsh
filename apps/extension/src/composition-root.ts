@@ -124,7 +124,9 @@ export function createCompositionRoot(context: vscode.ExtensionContext): Composi
     const folder = currentWorkspaceFolder()
     return folder === undefined ? undefined : workspaceFolderId(folder)
   }
-  const workspaceFolderIdForSession = (session: Pick<SessionSummary, 'cwd'>): string | undefined => {
+  const workspaceFolderIdForSession = (
+    session: Pick<SessionSummary, 'cwd' | 'projection'>,
+  ): string | undefined => {
     const state = coordinator.getState()
     return hasLocalWorkspaceAuthority(state.kind === 'connected' ? state.backend : undefined)
       ? sessionWorkspaceFolderId({

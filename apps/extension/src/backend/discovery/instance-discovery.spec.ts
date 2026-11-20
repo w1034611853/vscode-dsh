@@ -337,7 +337,7 @@ describe('CompositeInstanceDiscovery canonical endpoint allow-list', () => {
     const resolved = await discovery.discover()
 
     expect(resolved.map((entry) => entry.endpoint.baseUrl)).toEqual(
-      reachable.slice(0, 2).map((endpoint) => endpoint.baseUrl),
+      reachable.filter((endpoint) => endpoint.host !== 'dsh.home.arpa').map((endpoint) => endpoint.baseUrl),
     )
   })
 })

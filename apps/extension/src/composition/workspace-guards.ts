@@ -1,13 +1,25 @@
 import type * as vscode from 'vscode'
-import type { WorkspaceSummary } from '@dsh-vscode/domain'
+import { effectiveSessionDirectory, type SessionSummary, type WorkspaceSummary } from '@dsh-vscode/domain'
 import type { WebviewRequest } from '@dsh-vscode/webview-protocol'
 import { sameWorkspacePath } from './workspace-state.js'
 
 export function sessionBelongsToWorkspaces(
-  session: { readonly id: string; readonly workspaceId: string; readonly cwd?: string },
+  session: Pick<SessionSummary, 'id' | 'workspaceId' | 'cwd' | 'projection'>,
   workspaces: readonly WorkspaceSummary[],
   folders: readonly vscode.WorkspaceFolder[] = [],
 ): boolean {
+  // An explicit execution-directory projection overrides registry membership.
+  // Moving a session must not leave execution authority in its original window.
+  if (session.projection !== undefined && Object.hasOwn(session.projection.values, 'workingDirectory')) {
+    const cwd = effectiveSessionDirectory(session)
+    return (
+      cwd !== undefined &&
+      (folders.some((folder) => sameWorkspacePath(cwd, folder.uri.fsPath)) ||
+        workspaces.some(
+          (workspace) => workspace.path !== undefined && sameWorkspacePath(cwd, workspace.path),
+        ))
+    )
+  }
   return (
     workspaces.some(
       (workspace) =>

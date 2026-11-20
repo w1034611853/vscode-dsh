@@ -87,7 +87,9 @@ export interface RequestGatewayDependencies {
     readonly backendInstanceId: string
     readonly connectionGeneration: number
   }
-  readonly workspaceFolderIdForSession: (session: Pick<SessionSummary, 'cwd'>) => string | undefined
+  readonly workspaceFolderIdForSession: (
+    session: Pick<SessionSummary, 'cwd' | 'projection'>,
+  ) => string | undefined
   readonly startJobFollow: (
     sessionId: string,
     jobId: string,

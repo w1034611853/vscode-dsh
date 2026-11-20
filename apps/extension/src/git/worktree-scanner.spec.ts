@@ -127,7 +127,7 @@ describe('scanGitWorktrees', () => {
     expect(snapshot).toEqual({
       rootPath: root,
       commonDirectory: common,
-      repositoryId: common,
+      repositoryId: path.normalize(common),
       currentWorktree: {
         path: '/work/project',
         head: 'abc123',
@@ -181,7 +181,11 @@ describe('scanGitWorktrees', () => {
       expect(snapshot?.rootPath).toBe(featurePath)
       expect(snapshot?.currentWorktree.branch).toBe('feature')
       expect(snapshot?.worktrees.map((worktree) => worktree.branch)).toEqual(['main', 'feature'])
-      expect(snapshot?.repositoryId).toBe(path.join(mainPath, '.git'))
+      expect(snapshot?.repositoryId).toBe(
+        process.platform === 'win32'
+          ? path.join(mainPath, '.git').toLowerCase()
+          : path.join(mainPath, '.git'),
+      )
     } finally {
       await rm(parent, { recursive: true, force: true })
     }

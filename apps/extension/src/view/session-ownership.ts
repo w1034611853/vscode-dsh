@@ -1,3 +1,7 @@
+import type { SessionSummary } from '@dsh-vscode/domain'
+
+type OwnedSession = Pick<SessionSummary, 'id' | 'workspaceId' | 'cwd' | 'projection'>
+
 /**
  * Workspace ownership of a session id, following the durable parent chain the
  * subagent catalog published.
@@ -10,19 +14,13 @@
 export interface SessionOwnershipInput {
   readonly sessionId: string
   /** The already-read detail of `sessionId`. */
-  readonly detail: { readonly id: string; readonly workspaceId: string; readonly cwd?: string }
+  readonly detail: OwnedSession
   /** True when a session belongs to the current VS Code workspace. */
-  readonly belongs: (session: {
-    readonly id: string
-    readonly workspaceId: string
-    readonly cwd?: string
-  }) => boolean
+  readonly belongs: (session: OwnedSession) => boolean
   /** Durable parent of a catalog-resolved child, if the catalog knows one. */
   readonly parentOf: (childSessionId: string) => string | undefined
   /** Read one session through the ordinary repository. */
-  readonly readSession: (
-    sessionId: string,
-  ) => Promise<{ readonly id: string; readonly workspaceId: string; readonly cwd?: string }>
+  readonly readSession: (sessionId: string) => Promise<OwnedSession>
 }
 
 export async function ownsCurrentWorkspaceSession(input: SessionOwnershipInput): Promise<boolean> {

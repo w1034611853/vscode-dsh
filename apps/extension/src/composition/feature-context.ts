@@ -12,7 +12,9 @@ export interface FeatureContextDependencies {
   readonly backendService: BackendService
   readonly featureOwner: () => EditorContextOwner
   readonly currentWorkspaceFolders: () => readonly vscode.WorkspaceFolder[]
-  readonly workspaceFolderIdForSession: (session: Pick<SessionSummary, 'cwd'>) => string | undefined
+  readonly workspaceFolderIdForSession: (
+    session: Pick<SessionSummary, 'cwd' | 'projection'>,
+  ) => string | undefined
   readonly currentWorkspaceFolderId: (this: void) => string | undefined
 }
 

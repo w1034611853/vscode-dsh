@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [feat/wsl-desktop-http-pairing, feat/git-worktree-session]
+    tags: ['v*']
   pull_request:
     branches: [main]
     paths:
@@ -48,6 +49,17 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify release tag matches extension version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs'
+          const { version } = JSON.parse(readFileSync('apps/extension/package.json', 'utf8'))
+          if (process.env.RELEASE_TAG !== `v${version}`) throw new Error('Release tag must match the extension version')
+          NODE
+
       - name: Check formatting for changed sources
         run: pnpm exec prettier --check .github/workflows/build-vsix.yml CHANGELOG.md apps/extension/CHANGELOG.md apps/extension/src/git/*.ts docs/capability-matrix.md
 
@@ -58,15 +70,54 @@ jobs:
         run: pnpm typecheck
 
       - name: Run focused WSL tests
-        run: pnpm exec vitest run apps/extension/src/backend/external-connection-access.spec.ts apps/extension/src/composition/workspace-state.spec.ts apps/extension/src/composition/workspace-browser.spec.ts packages/dsh-adapter/test/alpha171-session-wire.spec.ts packages/domain/src/server-origin.spec.ts apps/extension/src/view/session-workspace-scope.spec.ts
+        run: pnpm exec vitest run apps/extension/src/backend/external-connection-access.spec.ts apps/extension/src/composition/workspace-state.spec.ts apps/extension/src/composition/workspace-browser.spec.ts packages/dsh-adapter/test/alpha171-session-wire.spec.ts packages/domain/src/server-origin.spec.ts apps/extension/src/view/session-workspace-scope.spec.ts apps/extension/src/composition/worktree-continuation.spec.ts apps/extension/src/git apps/extension/src/composition/session-navigation.spec.ts apps/extension/src/commands/command-manifest.spec.ts apps/extension/src/commands/register-commands.spec.ts
 
       - name: Package VSIX
         run: pnpm package:vsix
+
+      - name: Generate package checksums
+        working-directory: artifacts
+        run: sha256sum *.vsix > SHA256SUMS
 
       - name: Upload VSIX
         uses: actions/upload-artifact@v4
         with:
           name: dsh-coding-agent-wsl-${{ github.sha }}
-          path: artifacts/*.vsix
+          path: |
+            artifacts/*.vsix
+            artifacts/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/feat/git-worktree-session' && startsWith(github.event.head_commit.message, '[release]'))
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dsh-coding-agent-wsl-${{ github.sha }}
+          path: artifacts
+      - name: Prepare version release notes
+        id: version
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
+          const { version } = JSON.parse(readFileSync('apps/extension/package.json', 'utf8'))
+          if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Expected a stable release version')
+          const section = readFileSync('CHANGELOG.md', 'utf8').split(/^## /m).find(value => value.startsWith(`${version} — `))
+          if (!section) throw new Error('Missing version changelog')
+          writeFileSync('release-notes.md', `## ${section.trim()}\n\nDownload the VSIX below and install it using VS Code: Extensions: Install from VSIX.\n`)
+          appendFileSync(process.env.GITHUB_OUTPUT, `tag=v${version}\n`)
+          NODE
+      - name: Publish versioned VSIX and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: gh release create "$RELEASE_TAG" artifacts/*.vsix artifacts/SHA256SUMS --target "$RELEASE_SHA" --title "DSH Coding Agent $RELEASE_TAG" --notes-file release-notes.md

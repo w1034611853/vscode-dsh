@@ -16,6 +16,13 @@
 
 以下按版本倒序记录功能改进与问题修复。
 
+## 0.1.94 — Worktree 会话接续
+
+- 已切换执行目录的原会话可在对应 Worktree 中直接打开、保留历史并继续发送；会话原始项目归属不再覆盖当前执行目录。
+- 新增“DSH: Browse Git Worktree Sessions / 在工作树中继续原会话”入口，按 Git 仓库和实际执行目录查找原会话。
+- Remote-WSL 注册工作树时沿用同一发行版的 Windows UNC 命名空间；编辑器上下文使用实际执行目录。
+- 每次发送前重新核实目录；目录切换使旧窗口的执行权限缓存失效。其他目录的会话不会被静默迁移。
+
 ## 未发布
 
 - 新增 Git Worktree 基础识别模块：通过 Git common directory 区分同一仓库的主工作树与 linked worktree，并保留 branch、HEAD、detached、locked 和 prunable 状态；Git 子进程使用 argv 执行、超时、输出上限与取消。

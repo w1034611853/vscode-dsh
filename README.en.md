@@ -73,6 +73,8 @@ A saved manual address takes precedence. VS Code SecretStorage keeps your creden
 
 #### Option 2 · Use DSH CLI
 
+For Windows Desktop connections from Remote-WSL, see the [Remote-WSL Desktop guide](docs/remote-wsl-desktop.md). Matching distribution paths are translated between Windows UNC and the WSL host; sessions with a committed working-directory change can continue in the matching open Worktree.
+
 1. Install Node.js. See [runtime compatibility](docs/dsh-contract.md) for version requirements.
 2. Select **DSH CLI** in the connection settings. The extension detects the installed CLI, or you can select the executable manually.
 3. Choose **Start and connect**.

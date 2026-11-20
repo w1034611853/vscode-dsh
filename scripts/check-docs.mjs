@@ -11,6 +11,7 @@ const expectedDocs = new Set([
   'capability-matrix.md',
   'ui.md',
   'quality.md',
+  'remote-wsl-desktop.md',
 ])
 const errors = []
 

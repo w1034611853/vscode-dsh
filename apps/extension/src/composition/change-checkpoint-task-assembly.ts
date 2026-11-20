@@ -60,7 +60,9 @@ export interface ChangeCheckpointTaskDependencies {
   readonly post: PostHostMessage
   readonly backendService: BackendService
   readonly nextFeatureLocalSequence: (this: void) => number
-  readonly workspaceFolderIdForSession: (session: Pick<SessionSummary, 'cwd'>) => string | undefined
+  readonly workspaceFolderIdForSession: (
+    session: Pick<SessionSummary, 'cwd' | 'projection'>,
+  ) => string | undefined
   readonly currentWorkspaceFolders: () => readonly vscode.WorkspaceFolder[]
   readonly currentWorkspaceFolderId: (this: void) => string | undefined
 }

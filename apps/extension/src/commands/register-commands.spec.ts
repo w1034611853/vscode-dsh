@@ -38,6 +38,7 @@ describe('registerCommands', () => {
       'dsh.connect',
       'dsh.reconnect',
       'dsh.newSession',
+      'dsh.browseWorktreeSessions',
       'dsh.openSettings',
       'dsh.openWebUi',
       'dsh.installRuntime',

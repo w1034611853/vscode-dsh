@@ -86,6 +86,7 @@ function fixture(withSnapshot = false): BrowserFixture {
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.restoreAllMocks()
 })
 
 beforeEach(() => {
@@ -261,6 +262,7 @@ describe('workspace browser Host boundary', () => {
   })
 
   it('maps a Windows WSL UNC registry path before opening it in the WSL host', async () => {
+    vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
     vi.stubEnv('WSL_DISTRO_NAME', 'HwUbuntu-24.04')
     const f = fixture()
     f.workspace.path = '\\\\wsl.localhost\\HwUbuntu-24.04\\home\\fixture\\project'

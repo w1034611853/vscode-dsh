@@ -1,14 +1,14 @@
 import { realpathSync } from 'node:fs'
 import path from 'node:path'
 
-import type { SessionSummary } from '@dsh-vscode/domain'
+import { effectiveSessionDirectory, type SessionSummary } from '@dsh-vscode/domain'
 
 import { toCurrentHostWorkspacePath } from '../composition/workspace-state.js'
 import type { GitRepositorySnapshot, GitWorktree } from './worktree-scanner.js'
 
 export type WorktreeSessionSummary = Pick<
   SessionSummary,
-  'id' | 'workspaceId' | 'title' | 'status' | 'updatedAt' | 'cwd'
+  'id' | 'workspaceId' | 'title' | 'status' | 'updatedAt' | 'cwd' | 'projection'
 >
 
 export interface WorktreeSessionMatch {
@@ -52,8 +52,9 @@ export function matchSessionsToWorktrees(
   const matches: WorktreeSessionMatch[] = []
 
   for (const session of sessions) {
-    if (session.cwd === undefined || session.cwd.trim() === '') continue
-    const hostCwd = toHostPath(session.cwd)
+    const directory = effectiveSessionDirectory(session)
+    if (directory === undefined || directory.trim() === '') continue
+    const hostCwd = toHostPath(directory)
     if (!path.isAbsolute(hostCwd)) continue
     const cwd = canonicalize(hostCwd)
     const owner = worktrees.find(({ root }) => isWithinDirectory(root, cwd))

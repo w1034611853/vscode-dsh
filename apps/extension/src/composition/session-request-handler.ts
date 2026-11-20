@@ -69,7 +69,7 @@ export function createSessionRequestHandler(
    * accepted by feature routes, and the DSH workspace id is a different
    * namespace, so the Webview reads the ownership here instead of inferring it.
    */
-  const withSessionWorkspaceScope = <T extends Pick<SessionSummary, 'cwd'>>(
+  const withSessionWorkspaceScope = <T extends Pick<SessionSummary, 'cwd' | 'projection'>>(
     session: T,
   ): T & { readonly workspaceFolderId?: string } => {
     const folderId = workspaceFolderIdForSession(session)
@@ -232,7 +232,10 @@ export function createSessionRequestHandler(
     }
 
     if (request.type === 'session.sendPrompt') {
-      const session = await requireCurrentWorkspaceSession(request.payload.sessionId, signal)
+      const session = await requireCurrentWorkspaceSession(request.payload.sessionId, signal, {
+        fresh: true,
+        rebaseline: false,
+      })
       // A restored/editor-tab session may send before an open/selection event.
       // Prepare optional editor access before the model can issue its first tool.
       await deps.prepareEditorSession?.(session.id, signal)

@@ -31,6 +31,7 @@ import { createSessionDropEditorProvider } from '../view/session-drop-editor.js'
 import type { RequestGateway } from './request-handler.js'
 import { EditorBridgeHost } from '../editor/editor-bridge-host.js'
 import { AutomaticSelectionContext } from '../editor/automatic-selection-context.js'
+import { browseWorktreeSessions } from '../git/worktree-session-browser.js'
 
 const TRANSPORT_CONFIGURATION_KEYS = [
   'dsh.connection.mode',
@@ -297,6 +298,7 @@ export function createCommandsAssembly(deps: CommandsAssemblyDependencies): Comm
         'dsh.resetConnection': () => deps.resetConnection?.(),
         'dsh.connect': () => reconnect(),
         'dsh.reconnect': () => reconnect(),
+        'dsh.browseWorktreeSessions': () => browseWorktreeSessions(deps),
         'dsh.newSession': async () => {
           const delivered = await revealThenPost('ui.sessions.toggle', {})
           if (!delivered)

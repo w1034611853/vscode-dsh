@@ -67,6 +67,19 @@ export function toCurrentHostWorkspacePath(value: string): string {
   return wslUncPathToPosix(value) ?? value
 }
 
+/** Preserve the verified registry's WSL namespace when registering a new root. */
+export function toRegisteredWorkspacePath(
+  value: string,
+  registeredPaths: readonly string[],
+  distroName = process.env.WSL_DISTRO_NAME,
+): string {
+  if (distroName === undefined || !value.startsWith('/') || value.includes('\0')) return value
+  const exemplar = registeredPaths.find((entry) => wslUncPathToPosix(entry, distroName) !== undefined)
+  if (exemplar === undefined) return value
+  const prefix = /^\\\\(?:wsl\.localhost|wsl\$)\\[^\\]+/iu.exec(exemplar)?.[0]
+  return prefix === undefined ? value : `${prefix}${value.replaceAll('/', '\\')}`
+}
+
 export function sameWorkspacePath(left: string, right: string): boolean {
   const normalize = (value: string): string => {
     const hostPath = toCurrentHostWorkspacePath(value)

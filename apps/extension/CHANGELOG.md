@@ -16,10 +16,22 @@
 
 以下按版本倒序记录功能改进与问题修复。
 
+## 0.1.94 — Worktree 会话接续
+
+- 已切换执行目录的原会话可在对应 Worktree 中直接打开、保留历史并继续发送；会话原始项目归属不再覆盖当前执行目录。
+- 新增“DSH: Browse Git Worktree Sessions / 在工作树中继续原会话”入口，按 Git 仓库和实际执行目录查找原会话。
+- Remote-WSL 注册工作树时沿用同一发行版的 Windows UNC 命名空间；编辑器上下文使用实际执行目录。
+- 每次发送前重新核实目录；目录切换使旧窗口的执行权限缓存失效。其他目录的会话不会被静默迁移。
+
 ## 未发布
 
 - 新增 Git Worktree 基础识别模块：通过 Git common directory 区分同一仓库的主工作树与 linked worktree，并保留 branch、HEAD、detached、locked 和 prunable 状态；Git 子进程使用 argv 执行、超时、输出上限与取消。
 - 新增 Session cwd 到 Worktree 的 Host 侧匹配器，按规范化路径边界匹配并优先选择最深层 Worktree；不根据 DSH workspace ID、目录名或分支名猜测归属。该阶段尚未接入会话列表、跨 Worktree Session 授权或 cwd 切换。
+- Remote-WSL Desktop 配对现在同时支持 IPv4 `127.0.0.1` 与 IPv6 `[::1]` loopback 地址；修复 DSH Connect 返回 IPv6 loopback 时无法建立本地工作区权限证明、导致跨工作区继续按钮被禁用的问题。
+- 新增 Remote-WSL 连接 Windows DSH Desktop 的 HTTP 配对路径：使用已授权的 Desktop Connect loopback API 获取新 launch URL，不再依赖 WSL 中不可用的 Windows Named Pipe；配对后可获得本地工作区操作权限。
+- 识别当前 WSL 发行版对应的 `\\wsl.localhost\\<distro>\\...` / `\\wsl$\\<distro>\\...` 工作区路径，并在文件系统访问、工作区比较和跨项目打开时映射为 POSIX 路径；拒绝其他发行版和路径遍历段。
+- 为 WSL HTTP 配对、launch URL 校验和 UNC 路径映射补充单元测试。
+
 - 修复聚焦对话将同一轮的部分回复正文折进工具日志的问题。
 - 在支持 Agent Teams 的根会话中，可从模型菜单开启或关闭智能体团队协作，并同步 DSH 保存的状态。对话开始后，停用前会提示可能影响缓存和当前协作。
 - 为新版 DSH rc4 rc5 增加精确版本识别，并沿用已核对的会话协议。
