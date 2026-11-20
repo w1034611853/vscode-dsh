@@ -1,3 +1,4 @@
+import type { SessionLocationRepository } from './session-location.js'
 import type { WorkspaceChangeSource } from './changes.js'
 import type { ModsBandRepository } from './mods-band.js'
 import type { InspectorDevtoolsRepository } from './inspector.js'
@@ -332,6 +333,7 @@ export interface ExportRepository {
 }
 
 export interface DshBackend {
+  readonly sessionLocation?: SessionLocationRepository
   /** Optional editor companion; activation is a separate explicit Host action. */
   readonly editorBridge?: EditorBridgeRepository
   readonly inspectorDevtools?: InspectorDevtoolsRepository

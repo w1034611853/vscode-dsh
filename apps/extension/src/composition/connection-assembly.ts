@@ -1,4 +1,6 @@
 import { parseDesktopLaunchUrl } from '../vscode/connect-desktop.js'
+import { WORKSPACE_HANDOFF } from './workspace-browser.js'
+import { isDesktopLocationHandoff } from './session-location-handoff.js'
 import { resetConnectionSettings } from '../config/reset-connection-settings.js'
 import {
   DesktopPairingError,
@@ -588,9 +590,21 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
       customEndpoint === undefined
         ? undefined
         : context.workspaceState.get<string>('dsh.desktop.lastEndpoint')
+    const desktopHandoff =
+      vscode.workspace.isTrusted &&
+      customEndpoint !== undefined &&
+      isLoopbackEndpoint(customEndpoint) &&
+      isDesktopLocationHandoff(
+        context.globalState?.get(WORKSPACE_HANDOFF),
+        customEndpoint.baseUrl,
+        currentWorkspaceFolders().map((folder) => folder.uri.fsPath),
+        Date.now(),
+      )
     const isDesktopEndpoint =
       customEndpoint !== undefined &&
-      (desktopOrigin === customEndpoint.baseUrl || automaticOrigin === customEndpoint.baseUrl)
+      (desktopOrigin === customEndpoint.baseUrl ||
+        automaticOrigin === customEndpoint.baseUrl ||
+        desktopHandoff)
     const wslBootstrapEndpoint = isWslRemoteHost()
       ? endpointFromServerUrl(context.workspaceState.get<string>('dsh.desktop.wslBootstrapEndpoint'))
       : undefined
@@ -650,7 +664,11 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
           externalConnection.authorizePairedDesktop(launch.endpoint, launch.token, signal),
         )
         usingPairedLaunch = true
-        if (launch.endpoint.baseUrl !== configuredEndpoint.baseUrl || current.connection.runtimeVersion)
+        if (
+          launch.endpoint.baseUrl !== configuredEndpoint.baseUrl ||
+          current.connection.runtimeVersion ||
+          desktopHandoff
+        )
           await tracePreparation('configuration-save', attempt, signal, () =>
             persistPairedDesktop(launchOrigin ?? configuredEndpoint.baseUrl, launch.endpoint, signal),
           )
@@ -724,7 +742,7 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
         signal?.throwIfAborted()
         usingPairedLaunch = true
         customEndpoint = launch.endpoint
-        if (launch.endpoint.baseUrl !== origin || current.connection.runtimeVersion)
+        if (launch.endpoint.baseUrl !== origin || current.connection.runtimeVersion || desktopHandoff)
           await tracePreparation('configuration-save', attempt, signal, () =>
             persistPairedDesktop(origin, launch.endpoint, signal),
           )

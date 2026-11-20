@@ -158,7 +158,14 @@ export class AlphaRemoteMux {
         payload: { args },
       })
       if (
-        ['job/list', 'job/follow', 'session/follow', 'session/control', 'workspace/follow'].includes(endpoint)
+        [
+          'job/list',
+          'job/follow',
+          'session/follow',
+          'session/control',
+          'workspace/follow',
+          'forgePanel/follow',
+        ].includes(endpoint)
       ) {
         firstFrameTimer = setTimeout(() => {
           if (state.terminal) return

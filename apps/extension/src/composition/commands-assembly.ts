@@ -1,3 +1,4 @@
+import { SessionLocationController } from '../git/session-location-controller.js'
 import { sameWorkspacePath } from './workspace-state.js'
 import { WORKSPACE_HANDOFF, WORKSPACE_BROWSER_STARTED_AT } from './workspace-browser.js'
 import * as vscode from 'vscode'
@@ -185,8 +186,10 @@ export function createCommandsAssembly(deps: CommandsAssemblyDependencies): Comm
       )
     },
   })
+  const sessionLocation = new SessionLocationController(deps)
   const stateSubscription = coordinator.subscribe((state) => {
     publishState(state, 'coordinator')
+    sessionLocation.refresh()
     if (state.kind === 'connected') automaticSelection.schedule()
     else automaticSelection.reset()
   })
@@ -195,6 +198,7 @@ export function createCommandsAssembly(deps: CommandsAssemblyDependencies): Comm
   })
   const subscriptions: vscode.Disposable[] = [
     automaticSelection,
+    sessionLocation,
     stateSubscriptionDisposable(stateSubscription),
     stateSubscriptionDisposable(outputSubscription),
     provider,
@@ -299,6 +303,8 @@ export function createCommandsAssembly(deps: CommandsAssemblyDependencies): Comm
         'dsh.connect': () => reconnect(),
         'dsh.reconnect': () => reconnect(),
         'dsh.browseWorktreeSessions': () => browseWorktreeSessions(deps),
+        'dsh.openSessionDirectory': () => sessionLocation.open(),
+        'dsh.locateSession': () => sessionLocation.choose(),
         'dsh.newSession': async () => {
           const delivered = await revealThenPost('ui.sessions.toggle', {})
           if (!delivered)
@@ -401,6 +407,7 @@ export function createCommandsAssembly(deps: CommandsAssemblyDependencies): Comm
   const dispose = async (): Promise<void> => {
     const errors = await runCleanupSequence([
       () => {},
+      () => sessionLocation.dispose(),
       () => router.cancelAll(),
       () => editorBridge.dispose(),
       () => disposeAccountLifecycleHost(),

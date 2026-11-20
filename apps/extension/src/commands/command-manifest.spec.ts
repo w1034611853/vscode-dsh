@@ -28,6 +28,8 @@ describe('command manifest contributions', () => {
         'dsh.connectDesktop',
         'dsh.newSession',
         'dsh.browseWorktreeSessions',
+        'dsh.openSessionDirectory',
+        'dsh.locateSession',
         'dsh.openSettings',
         'dsh.openChatInEditor',
         'dsh.moveChatToSidebar',

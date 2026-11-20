@@ -23,7 +23,7 @@ interface BrowserFixture {
   readonly session: { cwd: string }
   readonly backend: {
     connection: { endpoint: { host: string }; pid?: number; localDesktopPairing?: true }
-    sessions: { open: Mock; list: Mock }
+    sessions: { open: Mock; list: Mock; get: Mock }
     workspaces: { listArchivedSessionIds: Mock }
   }
   readonly history: Mock
@@ -56,7 +56,12 @@ function fixture(withSnapshot = false): BrowserFixture {
       ownership: 'external',
       pid: 123,
     },
-    sessions: { list: vi.fn().mockResolvedValue({ items: [session] }), history, open: vi.fn() },
+    sessions: {
+      list: vi.fn().mockResolvedValue({ items: [session] }),
+      history,
+      open: vi.fn(),
+      get: vi.fn().mockResolvedValue(session),
+    },
     workspaces: { listArchivedSessionIds: vi.fn().mockResolvedValue([]) },
   }
   const ensure = vi.fn().mockResolvedValue({ id: 'temporary' })
@@ -310,6 +315,36 @@ describe('workspace browser Host boundary', () => {
     controller.abort()
     await expect(fixture().request(payload, controller.signal)).rejects.toMatchObject({ name: 'AbortError' })
     expect(native.execute).not.toHaveBeenCalled()
+  })
+
+  it('resumes a location handoff from fresh directory facts, not immutable workspace membership', async () => {
+    const f = fixture()
+    const pending = {
+      path: f.workspace.path,
+      sessionId: 's1',
+      time: WORKSPACE_BROWSER_STARTED_AT - 1,
+      source: 'session-location',
+      origin: 'http://127.0.0.1:41234',
+    }
+    f.get.mockReturnValue(pending)
+    f.backend.sessions.get.mockResolvedValue({
+      id: 's1',
+      cwd: '/original',
+      workspaceId: 'original',
+      projection: { values: { workingDirectory: f.workspace.path } },
+    })
+    expect(await f.request({ action: 'resume' })).toEqual({ sessionId: 's1' })
+    expect(f.backend.sessions.list).not.toHaveBeenCalled()
+    f.update.mockClear()
+    f.get.mockReturnValue({ ...pending, origin: 'http://127.0.0.1:41235' })
+    expect(await f.request({ action: 'resume' })).toEqual({})
+    f.get.mockReturnValue(pending)
+    f.backend.sessions.get.mockResolvedValue({
+      id: 's1',
+      projection: { values: { workingDirectory: '/moved-again' } },
+    })
+    expect(await f.request({ action: 'resume' })).toEqual({})
+    expect(f.update).not.toHaveBeenCalled()
   })
 
   it('resumes only a current, recent, catalog-owned handoff and consumes it once', async () => {

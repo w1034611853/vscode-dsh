@@ -4,6 +4,11 @@ import { AppError } from '@dsh-vscode/domain'
 import { DesktopPairingError } from '../backend/desktop-pairing.js'
 
 vi.mock('vscode', () => ({
+  env: {
+    get remoteName() {
+      return harness.remoteName
+    },
+  },
   workspace: {
     get isTrusted() {
       return harness.isTrusted
@@ -47,6 +52,7 @@ vi.mock('vscode', () => ({
 const harness = vi.hoisted(() => {
   const state = {
     isTrusted: true,
+    remoteName: undefined as string | undefined,
     configuration: {
       connection: { mode: 'auto' as 'auto' | 'custom' | 'attach-only', serverUrl: '', runtimeVersion: '' },
       runtime: { autoStart: false },
@@ -131,6 +137,7 @@ describe('connection.configure reconnect', () => {
   afterEach(() => vi.unstubAllEnvs())
   beforeEach(() => {
     harness.isTrusted = true
+    harness.remoteName = undefined
     harness.connects.length = 0
     harness.transportListeners.length = 0
     harness.writes.length = 0
@@ -415,6 +422,65 @@ describe('connection.configure reconnect', () => {
     expect(harness.connects[1]).toMatchObject({ mode: 'custom', endpoint: { port: 4311 } })
     pending.resolve({ backend: { connection: { endpoint: { port: 4310 } } }, state: { kind: 'connected' } })
     await cancelled
+  })
+
+  it('re-verifies a native WSL directory handoff before persisting Desktop identity in the destination', async () => {
+    const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+    harness.remoteName = 'wsl'
+    const origin = 'http://127.0.0.1:43120'
+    harness.configuration.connection = { mode: 'custom', serverUrl: origin, runtimeVersion: '' }
+    const marker = vi.fn().mockResolvedValue(undefined)
+    const authorize = vi.fn().mockResolvedValue(undefined)
+    const read = vi.fn().mockResolvedValue(origin + '/?token=fixture-handoff')
+    const connect = vi.fn().mockResolvedValue({
+      backend: { connection: { endpoint: { host: '127.0.0.1', port: 43120, baseUrl: origin } } },
+      state: { kind: 'connected' },
+    })
+    const pending = {
+      source: 'session-location',
+      desktopPairing: true,
+      origin,
+      path: '/repo/feature',
+      sessionId: 's1',
+      time: Date.now() - 1000,
+    }
+    try {
+      const subject = createConnectionLifecycle({
+        context: {
+          workspaceState: { get: () => undefined, update: marker },
+          globalState: {
+            get: (key: string) => (key === 'dsh.workspace.browserHandoff' ? pending : undefined),
+          },
+        },
+        configuration: { read: () => harness.configuration },
+        externalConnection: {
+          hasSavedAuthorization: () => Promise.resolve(true),
+          prepare: () => Promise.resolve(),
+          readDesktopLaunchUrl: read,
+          authorizePairedDesktop: authorize,
+          revision: 1,
+        },
+        coordinator: { connect },
+        currentWorkspaceFolders: () => [{ uri: { fsPath: '/repo/feature' } }],
+        endpointLaunchUrls: new Map(),
+        attach: () => Promise.resolve(),
+        publishState: () => undefined,
+        disposeAccountLifecycleHost: () => Promise.resolve(),
+        detachSessionAdapters: () => undefined,
+      } as never)
+      await subject.connect()
+      expect(read).toHaveBeenCalledOnce()
+      expect(authorize).toHaveBeenCalledWith(
+        expect.objectContaining({ baseUrl: origin }),
+        'fixture-handoff',
+        undefined,
+      )
+      expect(connect).toHaveBeenCalledWith(expect.objectContaining({ localDesktopPairing: true }), undefined)
+      expect(marker).toHaveBeenCalledWith('dsh.desktop.lastEndpoint', origin)
+    } finally {
+      platform.mockRestore()
+      harness.remoteName = undefined
+    }
   })
 
   it('uses the paired restart address and lets the probe resolve the current version', async () => {

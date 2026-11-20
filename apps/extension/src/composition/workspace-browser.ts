@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { stat } from 'node:fs/promises'
-import { AppError, isLoopbackEndpoint } from '@dsh-vscode/domain'
+import { AppError, effectiveSessionDirectory, isLoopbackEndpoint } from '@dsh-vscode/domain'
 import { isInjectedUserMessage } from '@dsh-vscode/timeline'
 import type { WebviewRequest } from '@dsh-vscode/webview-protocol'
 import type { RequestGatewayDependencies } from './request-gateway-dependencies.js'
@@ -57,9 +57,13 @@ export async function workspaceBrowser(
     })
   }
   if (request.action === 'resume') {
-    const pending = deps.context.globalState.get<{ path: string; sessionId: string; time: number }>(
-      WORKSPACE_HANDOFF,
-    )
+    const pending = deps.context.globalState.get<{
+      path: string
+      sessionId: string
+      time: number
+      source?: string
+      origin?: string
+    }>(WORKSPACE_HANDOFF)
     if (
       !pending ||
       typeof pending.path !== 'string' ||
@@ -74,6 +78,21 @@ export async function workspaceBrowser(
       (item) => item.path !== undefined && sameWorkspacePath(item.path, pending.path),
     )
     if (!workspace) return {}
+    if (pending.source === 'session-location') {
+      if (!local || !vscode.workspace.isTrusted || pending.origin !== backend.connection.endpoint.baseUrl)
+        return {}
+      const detail = await backend.sessions.get(pending.sessionId, signal)
+      const cwd = effectiveSessionDirectory(detail)
+      if (
+        cwd === undefined ||
+        !sameWorkspacePath(cwd, pending.path) ||
+        (await backend.workspaces.listArchivedSessionIds(signal)).includes(detail.id)
+      )
+        return {}
+      signal.throwIfAborted()
+      await deps.context.globalState.update(WORKSPACE_HANDOFF, undefined)
+      return { sessionId: detail.id }
+    }
     const page = await listWorkspaceSessions(workspace.id)
     if (!page.items.some((item) => item.id === pending.sessionId)) return {}
     await deps.context.globalState.update(WORKSPACE_HANDOFF, undefined)

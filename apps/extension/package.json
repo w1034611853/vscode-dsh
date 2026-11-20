@@ -2,7 +2,7 @@
   "name": "dsh-coding-agent",
   "displayName": "DSH Coding Agent",
   "description": "%extension.description%",
-  "version": "0.1.94",
+  "version": "0.1.97",
   "publisher": "mcdottok",
   "icon": "resources/dsh.png",
   "license": "MIT",
@@ -65,7 +65,9 @@
     "onCommand:dsh.installEditorCompanion",
     "onCommand:dsh.undoEditorEdit",
     "onCommand:dsh.connectDesktop",
-    "onCommand:dsh.browseWorktreeSessions"
+    "onCommand:dsh.browseWorktreeSessions",
+    "onCommand:dsh.openSessionDirectory",
+    "onCommand:dsh.locateSession"
   ],
   "scripts": {
     "build": "node esbuild.mjs",
@@ -260,6 +262,16 @@
         "command": "dsh.browseWorktreeSessions",
         "icon": "$(git-branch)",
         "title": "DSH: Browse Git Worktree Sessions / 在工作树中继续原会话"
+      },
+      {
+        "command": "dsh.openSessionDirectory",
+        "title": "DSH: Open Current Session Directory / 打开当前会话目录并继续",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "dsh.locateSession",
+        "title": "DSH: Locate Session / 定位任意会话并继续",
+        "icon": "$(folder-opened)"
       }
     ],
     "menus": {
@@ -415,6 +427,12 @@
         },
         {
           "command": "dsh.browseWorktreeSessions"
+        },
+        {
+          "command": "dsh.openSessionDirectory"
+        },
+        {
+          "command": "dsh.locateSession"
         }
       ]
     },

@@ -1,3 +1,6 @@
+import type { SessionLocationRepository } from '@dsh-vscode/domain'
+import type { AlphaLoopbackApiClient } from '../alpha/transport.js'
+import { Rc225SessionLocationRepository } from './session-location.js'
 import type { VersionAdapterIdentity } from '../../adapter-base.js'
 import { Rc224VersionAdapter } from '../rc224/adapter.js'
 
@@ -5,6 +8,11 @@ import { Rc224VersionAdapter } from '../rc224/adapter.js'
  * Search provider selection changes inside DSH; consumed wire shapes are unchanged.
  */
 export class Rc225VersionAdapter extends Rc224VersionAdapter {
+  protected override createSessionLocationRepository(
+    transport: AlphaLoopbackApiClient,
+  ): SessionLocationRepository {
+    return new Rc225SessionLocationRepository(transport)
+  }
   protected override readonly identity: VersionAdapterIdentity = {
     id: 'dsh-0.2.2-rc.5',
     supportedVersion: '0.2.2-rc.5',

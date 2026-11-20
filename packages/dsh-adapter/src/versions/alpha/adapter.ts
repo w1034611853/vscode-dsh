@@ -1,3 +1,4 @@
+import type { SessionLocationRepository } from '@dsh-vscode/domain'
 import { NegotiatedEditorBridgeRepository } from '../../repositories/editor-bridge-repository.js'
 import { workspaceChangeSource } from '../alpha162/workspace-changes.js'
 import {
@@ -260,6 +261,10 @@ export class Alpha1VersionAdapter extends DshVersionAdapterBase {
     const modsBand = this.createModsBandRepository(transport)
     const editorBridge = this.createEditorBridgeRepository(transport)
     const inspectorDevtools = this.createInspectorRepository(backend.endpoint)
+    const sessionLocation =
+      backend.capabilities.compatibilityMode === 'exact'
+        ? this.createSessionLocationRepository(transport)
+        : undefined
     const observe = (event: BackendEvent): void => {
       interactions.remember(event)
       sessions.remember(event)
@@ -278,6 +283,7 @@ export class Alpha1VersionAdapter extends DshVersionAdapterBase {
     let closed = false
     const backendValue: DshBackend = {
       connection: backend,
+      ...(sessionLocation === undefined ? {} : { sessionLocation }),
       ...(this.supportsWorkspaceChanges ? { workspaceChanges: workspaceChangeSource(transport) } : {}),
       sessions,
       workspaces,
@@ -333,6 +339,13 @@ export class Alpha1VersionAdapter extends DshVersionAdapterBase {
     transport: AlphaLoopbackApiClient,
   ): EditorBridgeRepository | undefined {
     return new NegotiatedEditorBridgeRepository(transport)
+  }
+
+  /** Optional native directory status from an exact release's official plugin. */
+  protected createSessionLocationRepository(
+    _transport: AlphaLoopbackApiClient,
+  ): SessionLocationRepository | undefined {
+    return undefined
   }
 
   /** Allow a release seam to replace the old session-control-backed Job source. */
