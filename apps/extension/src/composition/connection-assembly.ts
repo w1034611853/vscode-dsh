@@ -610,12 +610,17 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
       : undefined
     if (
       customEndpoint !== undefined &&
-      isDesktopEndpoint &&
+      isLoopbackEndpoint(customEndpoint) &&
+      vscode.workspace.isTrusted &&
       isWslRemoteHost() &&
       externalConnection !== undefined
     ) {
+      // Opening a folder directly has no workspace marker or navigation
+      // handoff. Re-check only this configured endpoint's saved approval and
+      // authenticated Desktop connector; a successful ordinary connection
+      // alone must never grant local filesystem authority.
       const configuredEndpoint = customEndpoint
-      const candidates = [wslBootstrapEndpoint, configuredEndpoint]
+      const candidates = [isDesktopEndpoint ? wslBootstrapEndpoint : undefined, configuredEndpoint]
         .filter((candidate): candidate is BackendEndpoint => candidate !== undefined)
         .filter(
           (candidate, index, all) => all.findIndex((item) => item.baseUrl === candidate.baseUrl) === index,
@@ -649,6 +654,12 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
       }
       signal?.throwIfAborted()
       if (launchUrl !== undefined) {
+        if (
+          connectionRevision !== resetRevision ||
+          selectionRevision !== configurationRevision ||
+          !vscode.workspace.isTrusted
+        )
+          throw new DOMException('Connection selection changed.', 'AbortError')
         const launch = parseDesktopLaunchUrl(launchUrl)
         if (
           !isLoopbackEndpoint(launch.endpoint) ||
@@ -667,7 +678,8 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
         if (
           launch.endpoint.baseUrl !== configuredEndpoint.baseUrl ||
           current.connection.runtimeVersion ||
-          desktopHandoff
+          desktopHandoff ||
+          desktopOrigin !== launch.endpoint.baseUrl
         )
           await tracePreparation('configuration-save', attempt, signal, () =>
             persistPairedDesktop(launchOrigin ?? configuredEndpoint.baseUrl, launch.endpoint, signal),
@@ -763,7 +775,7 @@ export function createConnectionLifecycle(deps: ConnectionLifecycleDependencies)
       mode: useConfiguredEndpoint ? 'custom' : mode,
       ...(useConfiguredEndpoint ? { credentialRevision: externalConnection?.revision ?? 0 } : {}),
       ...(customEndpoint === undefined ? {} : { endpoint: customEndpoint }),
-      ...(isDesktopEndpoint ? { desktopEndpoint: true as const } : {}),
+      ...(isDesktopEndpoint || usingPairedLaunch ? { desktopEndpoint: true as const } : {}),
       ...(usingPairedLaunch ? { localDesktopPairing: true as const } : {}),
       ...(allowedEndpoints === undefined ? {} : { allowedEndpoints }),
       ...(selectedRuntimeVersion === undefined || selectedRuntimeVersion === ''

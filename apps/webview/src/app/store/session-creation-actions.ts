@@ -90,7 +90,14 @@ export function createSessionCreationActions(
           (workspaceId === undefined
             ? undefined
             : state.workspaces.find((entry) => entry.id === workspaceId)) ?? state.workspaces[0]
-        if (workspace === undefined) throw new Error(translate('app.workspaceLoadingDescription'))
+        if (workspace === undefined)
+          throw new Error(
+            translate(
+              state.sessionDirectoryStatus === 'error'
+                ? 'sessions.startup.failedHint'
+                : 'app.workspaceLoadingDescription',
+            ),
+          )
         const defaultConfiguration = createDefaultConfiguration(state, getComposerPreferences())
         const configuration =
           presetId === undefined ? defaultConfiguration : { ...defaultConfiguration, preset: presetId }

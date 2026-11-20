@@ -14,6 +14,8 @@
 
 ## 后续版本的连接范围
 
+WSL 窗口直接打开新目录时可以没有 Desktop 窗口标记或目录 handoff。此时仅对用户配置的 loopback origin 检查已有批准，使用同一 origin 的 owner Cookie 请求配套连接地址，再完成新地址认证；成功前不授予本机目录权限。未批准、远程地址或缺失配套接口仍保留普通连接边界。目录注册全部失败时返回可重试错误，原始服务错误与路径不进入 Webview。
+
 对于尚未登记精确身份的合法版本，按协议家族选择基线。满足 `>=0.2.2-rc.2 <0.3.0-0` 的版本使用 `rc223`（沿用 rc.2 的会话与控制协议），满足 `>=0.2.1-rc.2 <0.2.2-rc.2` 的版本使用 `rc212`。两个范围均包含符合条件的预发布版本。先只读检查 `session.list` 的 Session V4 入口和 `workspace.list` 的 pinned Workspace 结构；通过后保留实际 DSH 版本及 `best-effort` 身份，不把它视作逐项完成验证。成功连接不自动弹出兼容警告，连接详情可查看兼容模式；实际连接或请求失败仍显示错误。检查失败时停止此家族的连接，不再尝试 Session v0 等历史回退。已有精确入口保持优先；范围之外不套用这两套基线，缺失版本的旧探测策略不变。
 
 `0.2.1-rc.4` 的 npm 发布包已核对：相对 rc.3，所消费的 Gateway、Host Webserver、Session、Workspace、Session Format Catalog、Session Projection、Typert Protocol/Registry、Client Locale/Renderer 和 Plugin Manager 的 JavaScript 与类型声明在归一化包版本后相同。此核对不等于 rc.4 的完整现场验收。Connect 的 `engines.dsh` 仍为 `>=0.2.1-rc.2 <0.3.0-0`，构建依赖仍固定 rc.2；不把未核对的 rc.1 或更早内核纳入 Connect 安装声明。

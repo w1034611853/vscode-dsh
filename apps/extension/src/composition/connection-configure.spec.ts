@@ -424,64 +424,85 @@ describe('connection.configure reconnect', () => {
     await cancelled
   })
 
-  it('re-verifies a native WSL directory handoff before persisting Desktop identity in the destination', async () => {
-    const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
-    harness.remoteName = 'wsl'
-    const origin = 'http://127.0.0.1:43120'
-    harness.configuration.connection = { mode: 'custom', serverUrl: origin, runtimeVersion: '' }
-    const marker = vi.fn().mockResolvedValue(undefined)
-    const authorize = vi.fn().mockResolvedValue(undefined)
-    const read = vi.fn().mockResolvedValue(origin + '/?token=fixture-handoff')
-    const connect = vi.fn().mockResolvedValue({
-      backend: { connection: { endpoint: { host: '127.0.0.1', port: 43120, baseUrl: origin } } },
-      state: { kind: 'connected' },
-    })
-    const pending = {
-      source: 'session-location',
-      desktopPairing: true,
-      origin,
-      path: '/repo/feature',
-      sessionId: 's1',
-      time: Date.now() - 1000,
-    }
-    try {
-      const subject = createConnectionLifecycle({
-        context: {
-          workspaceState: { get: () => undefined, update: marker },
-          globalState: {
-            get: (key: string) => (key === 'dsh.workspace.browserHandoff' ? pending : undefined),
+  it.each(['handoff', 'direct', 'unapproved', 'unsupported', 'remote'])(
+    're-verifies Desktop identity for a WSL folder opened via %s without trusting the saved address alone',
+    async (scenario) => {
+      const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('linux')
+      harness.remoteName = 'wsl'
+      const origin = scenario === 'remote' ? 'https://fixture.invalid' : 'http://127.0.0.1:43120'
+      harness.configuration.connection = { mode: 'custom', serverUrl: origin, runtimeVersion: '' }
+      const marker = vi.fn().mockResolvedValue(undefined)
+      const authorize = vi.fn().mockResolvedValue(undefined)
+      const read = vi
+        .fn()
+        .mockResolvedValue(scenario === 'unsupported' ? undefined : origin + '/?token=fixture-handoff')
+      const approved = vi.fn().mockResolvedValue(scenario !== 'unapproved')
+      const connect = vi.fn().mockResolvedValue({
+        backend: { connection: { endpoint: { host: '127.0.0.1', port: 43120, baseUrl: origin } } },
+        state: { kind: 'connected' },
+      })
+      const pending = {
+        source: 'session-location',
+        desktopPairing: true,
+        origin,
+        path: '/repo/feature',
+        sessionId: 's1',
+        time: Date.now() - 1000,
+      }
+      try {
+        const subject = createConnectionLifecycle({
+          context: {
+            workspaceState: { get: () => undefined, update: marker },
+            globalState: {
+              get: (key: string) =>
+                scenario === 'handoff' && key === 'dsh.workspace.browserHandoff' ? pending : undefined,
+            },
           },
-        },
-        configuration: { read: () => harness.configuration },
-        externalConnection: {
-          hasSavedAuthorization: () => Promise.resolve(true),
-          prepare: () => Promise.resolve(),
-          readDesktopLaunchUrl: read,
-          authorizePairedDesktop: authorize,
-          revision: 1,
-        },
-        coordinator: { connect },
-        currentWorkspaceFolders: () => [{ uri: { fsPath: '/repo/feature' } }],
-        endpointLaunchUrls: new Map(),
-        attach: () => Promise.resolve(),
-        publishState: () => undefined,
-        disposeAccountLifecycleHost: () => Promise.resolve(),
-        detachSessionAdapters: () => undefined,
-      } as never)
-      await subject.connect()
-      expect(read).toHaveBeenCalledOnce()
-      expect(authorize).toHaveBeenCalledWith(
-        expect.objectContaining({ baseUrl: origin }),
-        'fixture-handoff',
-        undefined,
-      )
-      expect(connect).toHaveBeenCalledWith(expect.objectContaining({ localDesktopPairing: true }), undefined)
-      expect(marker).toHaveBeenCalledWith('dsh.desktop.lastEndpoint', origin)
-    } finally {
-      platform.mockRestore()
-      harness.remoteName = undefined
-    }
-  })
+          configuration: { read: () => harness.configuration },
+          externalConnection: {
+            hasSavedAuthorization: approved,
+            prepare: () => Promise.resolve(),
+            readDesktopLaunchUrl: read,
+            authorizePairedDesktop: authorize,
+            revision: 1,
+          },
+          coordinator: { connect },
+          currentWorkspaceFolders: () => [{ uri: { fsPath: '/repo/feature' } }],
+          endpointLaunchUrls: new Map(),
+          attach: () => Promise.resolve(),
+          publishState: () => undefined,
+          disposeAccountLifecycleHost: () => Promise.resolve(),
+          detachSessionAdapters: () => undefined,
+        } as never)
+        await subject.connect()
+        if (scenario === 'unapproved' || scenario === 'unsupported' || scenario === 'remote') {
+          expect(authorize).not.toHaveBeenCalled()
+          expect(marker).not.toHaveBeenCalledWith('dsh.desktop.lastEndpoint', expect.anything())
+          expect(connect).toHaveBeenCalledWith(
+            expect.not.objectContaining({ localDesktopPairing: true }),
+            undefined,
+          )
+          if (scenario !== 'unsupported') expect(read).not.toHaveBeenCalled()
+          if (scenario === 'remote') expect(approved).not.toHaveBeenCalled()
+          return
+        }
+        expect(read).toHaveBeenCalledOnce()
+        expect(authorize).toHaveBeenCalledWith(
+          expect.objectContaining({ baseUrl: origin }),
+          'fixture-handoff',
+          undefined,
+        )
+        expect(connect).toHaveBeenCalledWith(
+          expect.objectContaining({ localDesktopPairing: true }),
+          undefined,
+        )
+        expect(marker).toHaveBeenCalledWith('dsh.desktop.lastEndpoint', origin)
+      } finally {
+        platform.mockRestore()
+        harness.remoteName = undefined
+      }
+    },
+  )
 
   it('uses the paired restart address and lets the probe resolve the current version', async () => {
     const original = 'http://127.0.0.1:43120'

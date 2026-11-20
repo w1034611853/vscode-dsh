@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import type { ProtocolClient } from './protocol-client.js'
+import { translate } from '../i18n.js'
 import {
   createHostBackedAppStore as createAppStore,
   type FixtureRequest as WebviewRequest,
@@ -42,6 +43,7 @@ function deferred<T>(): {
 function fixture(
   failFirstOpen = false,
   beforeList?: () => Promise<void>,
+  workspaceFailures = 0,
 ): {
   store: ReturnType<typeof createAppStore>
   requests: WebviewRequest[]
@@ -55,7 +57,11 @@ function fixture(
     request: async (request: WebviewRequest) => {
       await Promise.resolve()
       requests.push(request)
-      if (request.type === 'workspace.list')
+      if (request.type === 'workspace.list') {
+        if (workspaceFailures > 0) {
+          workspaceFailures -= 1
+          throw new Error('Workspace registration failed')
+        }
         return {
           items: [
             {
@@ -69,6 +75,7 @@ function fixture(
           ],
           archivedSessionIds: [],
         }
+      }
       if (request.type === 'session.list') {
         await beforeList?.()
         return { items: created ? [session('created')] : [] }
@@ -94,6 +101,25 @@ function fixture(
 }
 
 describe('New Session draft', () => {
+  it('reports failed folder preparation and can create and send after registration is retried', async () => {
+    const { store, requests } = fixture(false, undefined, 1)
+    try {
+      await store.refreshSessions()
+      expect(store.getState().sessionDirectoryStatus).toBe('error')
+      await expect(store.stageSession()).rejects.toThrow(translate('sessions.startup.failedHint'))
+      expect(requests.some((request) => request.type === 'session.create')).toBe(false)
+      await store.refreshSessions()
+      expect(store.getState().sessionDirectoryStatus).toBe('ready')
+      await store.stageSession()
+      await store.sendPendingPrompt('First message in the new folder', [], 'queue')
+      expect(store.activeSessionId).toBe('created')
+      expect(requests.filter((request) => request.type === 'session.create')).toHaveLength(1)
+      expect(requests.filter((request) => request.type === 'session.sendPrompt')).toHaveLength(1)
+    } finally {
+      store.dispose()
+    }
+  })
+
   it('keeps New local until the first ordinary message is submitted', async () => {
     const { store, requests } = fixture()
     try {

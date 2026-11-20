@@ -49,6 +49,20 @@ describe('workspace folder registration', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
+  it('reports a retryable failure when no root can be registered instead of returning a loading-looking empty list', async () => {
+    const create = vi.fn().mockRejectedValue(new Error('private path and server details'))
+    await expect(registerWorkspaceFolders(['/main'], [], create, samePath, true)).rejects.toMatchObject({
+      code: 'BACKEND_UNREACHABLE',
+      retryable: true,
+      message:
+        'DSH could not register the current folder. Check the connection and folder access, then retry.',
+    })
+    create.mockResolvedValueOnce(workspace('/main'))
+    await expect(registerWorkspaceFolders(['/main'], [], create, samePath, true)).resolves.toEqual([
+      workspace('/main'),
+    ])
+  })
+
   it('propagates cancellation and never starts the next registration', async () => {
     const controller = new AbortController()
     const create = vi.fn(() => {
