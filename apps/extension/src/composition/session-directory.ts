@@ -1,13 +1,8 @@
-import {
-  effectiveSessionDirectory,
-  type SessionListQuery,
-  type SessionPage,
-  type SessionSummary,
-} from '@dsh-vscode/domain'
+import type { SessionListQuery, SessionPage, SessionSummary } from '@dsh-vscode/domain'
 import type { RequestGatewayDependencies } from './request-gateway-dependencies.js'
 import type { CurrentWorkspaceDirectory } from './session-scope.js'
 import { sameWorkspacePath } from './workspace-state.js'
-import { sessionBelongsToWorkspaces } from './workspace-guards.js'
+import { sessionBelongsToWorkspaces, sessionForWorkspaceDisplay } from './workspace-guards.js'
 
 export type DirectoryDependencies = Pick<
   RequestGatewayDependencies,
@@ -58,14 +53,8 @@ export async function listScopedSessions(
   // before its authoritative execution directory can be matched here.
   const { workspaceId: _workspaceId, ...backendQuery } = query
   void _workspaceId
-  const forDisplay = (session: SessionSummary): SessionSummary => {
-    const cwd = effectiveSessionDirectory(session)
-    const currentWorkspace =
-      cwd === undefined
-        ? undefined
-        : workspaces.find((item) => item.path !== undefined && sameWorkspacePath(item.path, cwd))
-    return currentWorkspace === undefined ? session : { ...session, workspaceId: currentWorkspace.id }
-  }
+  const forDisplay = (session: SessionSummary): SessionSummary =>
+    sessionForWorkspaceDisplay(session, workspaces)
   if (directory?.registry !== undefined) {
     const { registry } = directory
     const includeSession = (session: SessionSummary): boolean =>

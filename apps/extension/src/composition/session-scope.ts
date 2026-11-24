@@ -13,7 +13,7 @@ import { registerWorkspaceFolders } from '../backend/register-workspace-folders.
 import { ownsCurrentWorkspaceSession } from '../view/session-ownership.js'
 import { sameWorkspacePath, toRegisteredWorkspacePath } from './workspace-state.js'
 import { hasLocalWorkspaceAuthority } from '../view/session-workspace-scope.js'
-import { sessionBelongsToWorkspaces } from './workspace-guards.js'
+import { sessionBelongsToWorkspaces, sessionForWorkspaceDisplay } from './workspace-guards.js'
 import { sessionOpenFailure } from './session-payload.js'
 
 /**
@@ -383,6 +383,11 @@ export function createSessionScope(deps: SessionScopeDependencies): SessionScope
           }),
         )
       loadSignal.throwIfAborted()
+      // The backend keeps the original registry id, while session.list groups
+      // by effective cwd. Return the same Host view on open, or replacing the
+      // sidebar row with this detail makes it disappear until the next list.
+      // Normalize only after ownership validation; no runtime metadata changes.
+      detail = sessionForWorkspaceDisplay(detail, workspaces)
       if (generation === currentWorkspaceSessionGeneration && options.allowArchived !== true) {
         // Ownership/advisory reads need metadata, never a retained transcript body.
         const { history: _history, ...metadata } = detail

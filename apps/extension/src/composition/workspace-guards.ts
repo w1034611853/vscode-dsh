@@ -3,6 +3,21 @@ import { effectiveSessionDirectory, type SessionSummary, type WorkspaceSummary }
 import type { WebviewRequest } from '@dsh-vscode/webview-protocol'
 import { sameWorkspacePath } from './workspace-state.js'
 
+/** Keep list and opened-detail grouping identical without changing DSH registry membership. */
+export function sessionForWorkspaceDisplay<T extends SessionSummary>(
+  session: T,
+  workspaces: readonly WorkspaceSummary[],
+): T {
+  const cwd = effectiveSessionDirectory(session)
+  const workspace =
+    cwd === undefined
+      ? undefined
+      : workspaces.find((item) => item.path !== undefined && sameWorkspacePath(item.path, cwd))
+  return workspace === undefined || workspace.id === session.workspaceId
+    ? session
+    : { ...session, workspaceId: workspace.id }
+}
+
 export function sessionBelongsToWorkspaces(
   session: Pick<SessionSummary, 'id' | 'workspaceId' | 'cwd' | 'projection'>,
   workspaces: readonly WorkspaceSummary[],

@@ -61,10 +61,10 @@ jobs:
           NODE
 
       - name: Check formatting for changed sources
-        run: pnpm exec prettier --check .github/workflows/build-vsix.yml CHANGELOG.md apps/extension/CHANGELOG.md apps/extension/src/git/*.ts docs/capability-matrix.md apps/webview/src/app/store/session-registry.ts apps/webview/src/app/store/session-projection.ts apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts
+        run: pnpm exec prettier --check .github/workflows/build-vsix.yml CHANGELOG.md apps/extension/CHANGELOG.md apps/extension/src/git/*.ts docs/capability-matrix.md apps/webview/src/app/store/session-registry.ts apps/webview/src/app/store/session-projection.ts apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts apps/extension/src/composition/session-directory.ts apps/extension/src/composition/session-scope.ts apps/extension/src/composition/workspace-guards.ts apps/extension/src/composition/session-workspace-display.spec.ts
 
       - name: Lint Git Worktree modules
-        run: pnpm exec eslint apps/extension/src/git/*.ts apps/webview/src/app/store/session-registry.ts apps/webview/src/app/store/session-projection.ts apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts
+        run: pnpm exec eslint apps/extension/src/git/*.ts apps/webview/src/app/store/session-registry.ts apps/webview/src/app/store/session-projection.ts apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts apps/extension/src/composition/session-directory.ts apps/extension/src/composition/session-scope.ts apps/extension/src/composition/workspace-guards.ts apps/extension/src/composition/session-workspace-display.spec.ts
 
       - name: Typecheck
         run: pnpm typecheck
@@ -76,7 +76,7 @@ jobs:
         run: pnpm exec vitest run apps/extension/src/composition/connection-lifecycle-trust.spec.ts apps/extension/src/composition/connection-token-login.spec.ts
 
       - name: Test fork visibility after switching sessions
-        run: pnpm exec vitest run apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts apps/webview/src/features/sessions/session-drawer-model.spec.ts
+        run: pnpm exec vitest run apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts apps/webview/src/features/sessions/session-drawer-model.spec.ts apps/extension/src/composition/session-workspace-display.spec.ts
 
       - name: Package VSIX
         run: pnpm package:vsix
