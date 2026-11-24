@@ -119,6 +119,7 @@ jobs:
           if (!section) throw new Error('Missing version changelog')
           writeFileSync('release-notes.md', `## ${section.trim()}\n\nDownload the VSIX below and install it using VS Code: Extensions: Install from VSIX.\n`)
           appendFileSync(process.env.GITHUB_OUTPUT, `tag=v${version}\n`)
+          appendFileSync(process.env.GITHUB_OUTPUT, `prerelease=${section.split('\n')[0].includes('（预发布）')}\n`)
           NODE
       - name: Publish versioned VSIX and checksums
         env:
@@ -126,4 +127,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           RELEASE_SHA: ${{ github.sha }}
-        run: gh release create "$RELEASE_TAG" artifacts/*.vsix artifacts/SHA256SUMS --target "$RELEASE_SHA" --title "DSH Coding Agent $RELEASE_TAG" --notes-file release-notes.md
+          RELEASE_PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$RELEASE_PRERELEASE" = "true" ]; then
+            flags+=(--prerelease --latest=false)
+          fi
+          gh release create "$RELEASE_TAG" artifacts/*.vsix artifacts/SHA256SUMS --target "$RELEASE_SHA" --title "DSH Coding Agent $RELEASE_TAG" --notes-file release-notes.md "${flags[@]}"
