@@ -5,6 +5,7 @@ import type { ConnectionSettings } from '@dsh-vscode/domain'
 const trust = vi.hoisted(() => ({ isTrusted: true }))
 
 vi.mock('vscode', () => ({
+  env: { remoteName: undefined },
   workspace: {
     get isTrusted() {
       return trust.isTrusted

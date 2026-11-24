@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ConnectionRequest } from '@dsh-vscode/application'
 
-vi.mock('vscode', () => ({ workspace: { isTrusted: true } }))
+vi.mock('vscode', () => ({ workspace: { isTrusted: true }, env: { remoteName: undefined } }))
 import { createConnectionLifecycle } from './connection-assembly.js'
 
 describe('connection credential boundary', () => {
