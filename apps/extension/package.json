@@ -2,7 +2,7 @@
   "name": "dsh-coding-agent",
   "displayName": "DSH Coding Agent",
   "description": "%extension.description%",
-  "version": "0.1.99",
+  "version": "0.1.100",
   "publisher": "mcdottok",
   "icon": "resources/dsh.png",
   "license": "MIT",
