@@ -84,10 +84,16 @@ export async function refreshSessions(
         : listedSessions,
     ).map((session) => {
       const live = liveRows.get(session.id)
+      // A completed history/fork cannot become an unused draft again. In
+      // particular, a list started before the fork/open can arrive after it;
+      // resetting blank hides that row as soon as another session is selected.
+      // Keep the accepted title too when the blank hint says "New Session".
+      const summary =
+        live?.blank === false && session.blank ? { ...session, blank: false, title: live.title } : session
       // A late advisory list cannot roll back a newer runtime/Turn event.
-      return live !== undefined && live !== rowsAtRead.get(session.id) && live.status !== session.status
-        ? { ...session, status: live.status }
-        : session
+      return live !== undefined && live !== rowsAtRead.get(session.id) && live.status !== summary.status
+        ? { ...summary, status: live.status }
+        : summary
     })
     const stableSessions = sameSessionSummaryList(current.sessions, nextSessions)
       ? current.sessions

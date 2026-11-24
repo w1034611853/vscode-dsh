@@ -61,16 +61,22 @@ jobs:
           NODE
 
       - name: Check formatting for changed sources
-        run: pnpm exec prettier --check .github/workflows/build-vsix.yml CHANGELOG.md apps/extension/CHANGELOG.md apps/extension/src/git/*.ts docs/capability-matrix.md
+        run: pnpm exec prettier --check .github/workflows/build-vsix.yml CHANGELOG.md apps/extension/CHANGELOG.md apps/extension/src/git/*.ts docs/capability-matrix.md apps/webview/src/app/store/session-registry.ts apps/webview/src/app/store/session-projection.ts apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts
 
       - name: Lint Git Worktree modules
-        run: pnpm exec eslint apps/extension/src/git/*.ts
+        run: pnpm exec eslint apps/extension/src/git/*.ts apps/webview/src/app/store/session-registry.ts apps/webview/src/app/store/session-projection.ts apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts
 
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Run focused WSL tests
         run: pnpm exec vitest run apps/extension/src/backend/external-connection-access.spec.ts apps/extension/src/composition/workspace-state.spec.ts apps/extension/src/composition/workspace-browser.spec.ts packages/dsh-adapter/test/alpha171-session-wire.spec.ts packages/domain/src/server-origin.spec.ts apps/extension/src/view/session-workspace-scope.spec.ts apps/extension/src/composition/worktree-continuation.spec.ts apps/extension/src/git apps/extension/src/composition/session-navigation.spec.ts apps/extension/src/commands/command-manifest.spec.ts apps/extension/src/commands/register-commands.spec.ts
+
+      - name: Test connection credential and trust boundaries
+        run: pnpm exec vitest run apps/extension/src/composition/connection-lifecycle-trust.spec.ts apps/extension/src/composition/connection-token-login.spec.ts
+
+      - name: Test fork visibility after switching sessions
+        run: pnpm exec vitest run apps/webview/src/app/store-subagent.spec.ts apps/webview/src/app/store-session-summary-freshness.spec.ts apps/webview/src/features/sessions/session-drawer-model.spec.ts
 
       - name: Package VSIX
         run: pnpm package:vsix

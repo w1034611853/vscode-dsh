@@ -2,8 +2,9 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HostMessage } from '@dsh-vscode/webview-protocol'
-import type { SubagentView } from '@dsh-vscode/domain'
+import type { SessionSummary, SubagentView } from '@dsh-vscode/domain'
 import type { ProtocolClient } from './protocol-client.js'
+import { workspaceSessionsFor } from '../features/sessions/session-drawer-model.js'
 import {
   createHostBackedAppStore as createAppStore,
   type FixtureRequest as WebviewRequest,
@@ -1600,6 +1601,73 @@ describe('AppStore session branching', () => {
     expect(store.activeSessionId).toBe('child')
     expect(store.sessions).toContainEqual(expect.objectContaining({ id: 'child', title: 'Branched' }))
     store.dispose()
+  })
+
+  it('keeps a fork visible after switching when a late list still calls it blank', async () => {
+    const parent: SessionSummary = {
+      id: 'parent',
+      workspaceId: 'workspace',
+      title: 'Task',
+      blank: false,
+      status: 'idle',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:01.000Z',
+    }
+    const child = { ...parent, id: 'child', title: 'Task (1)' }
+    const workspace = {
+      id: 'workspace',
+      name: 'Project',
+      sessionIds: ['parent', 'child'],
+      sessionCount: 2,
+      createdAt: parent.createdAt,
+      updatedAt: parent.updatedAt,
+    }
+    const client = new FakeClient((request) => {
+      switch (request.type) {
+        case 'session.list':
+          return { items: [parent, { ...child, blank: true }] }
+        case 'workspace.list':
+          return [workspace]
+        case 'session.fork':
+          return { ...child, history: [] }
+        case 'session.rename':
+          return { title: child.title }
+        case 'session.open':
+          return { ...(request.payload.sessionId === 'child' ? child : parent), history: [] }
+        case 'subagent.list':
+          return { entries: [], parentAvailable: true }
+        default:
+          return []
+      }
+    })
+    const store = createAppStore(client as unknown as ProtocolClient)
+    try {
+      await store.refreshSessions()
+      await store.forkSession('parent', 42)
+      await store.openSession('parent')
+      await store.refreshSessions()
+      expect(store.sessions.find(({ id }) => id === 'child')?.blank).toBe(false)
+      expect(
+        workspaceSessionsFor(
+          {
+            sessions: store.sessions,
+            activeSessionId: store.activeSessionId,
+            archivedSessions: [],
+            visibleWorkspaces: [workspace],
+            selectedWorkspace: workspace,
+            contentMatches: [],
+            query: '',
+            sorting: 'manual',
+            archiveFilter: 'hide',
+            workspaceDisplay: 'grouped',
+            t: (key) => key,
+          },
+          workspace,
+        ).map(({ id }) => id),
+      ).toContain('child')
+    } finally {
+      store.dispose()
+    }
   })
 
   it('assigns the next available numeric fork suffix before opening the child', async () => {

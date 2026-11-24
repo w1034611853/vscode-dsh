@@ -29,7 +29,7 @@ export function upsertOpenedSession(
     id: opened.id,
     workspaceId: opened.workspaceId,
     title: opened.title,
-    blank: opened.blank,
+    blank: opened.blank && sessions.find((session) => session.id === sessionId)?.blank !== false,
     status: opened.status,
     createdAt: opened.createdAt,
     updatedAt: opened.updatedAt,

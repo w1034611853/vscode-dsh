@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { SessionDetail, SessionSummary } from '@dsh-vscode/domain'
 import type { HostMessage } from '@dsh-vscode/webview-protocol'
 import type { ProtocolClient } from './protocol-client.js'
+import { upsertOpenedSession } from './store/session-projection.js'
 import {
   createHostBackedAppStore as createAppStore,
   type FixtureRequest as WebviewRequest,
@@ -76,6 +77,12 @@ class SummaryClient {
 }
 
 describe('Reopened session summaries in the Webview store', () => {
+  it('does not turn known history back into a reusable blank on a stale reopen', () => {
+    const result = upsertOpenedSession([opened], { ...opened, blank: true }, SESSION)
+    expect(result[0]?.blank).toBe(false)
+    expect(upsertOpenedSession([listed], { ...opened, blank: true }, SESSION)[0]?.blank).toBe(true)
+  })
+
   it('keeps a received idle status and refreshed durable fields across repeated opens', async () => {
     const client = new SummaryClient()
     const store = createAppStore(client as unknown as ProtocolClient)
